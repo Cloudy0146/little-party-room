@@ -317,12 +317,8 @@ function balloons() {
   return g;
 }
 
-function cakeTable() {
-  const g = new Group();
-  g.add(flag(at(cyl(0.42, 0.42, 0.06, C.wood, 40), 0, 0.62, 0), 'shade'));
-  g.add(flag(at(cyl(0.05, 0.07, 0.6, C.woodDark, 12), 0, 0.31, 0), 'shade'));
-  g.add(flag(at(cyl(0.22, 0.24, 0.04, C.woodDark, 24), 0, 0.02, 0), 'shade'));
-
+// 蛋糕本身（不含桌子）：原点在盘子底部中心。AR 导出（tools/ar-export.js）也用这一个
+export function buildCake() {
   const cake = new Group();
   cake.add(at(cyl(0.27, 0.27, 0.02, C.white, 40), 0, 0.01, 0)); // 盘子
   cake.add(at(cyl(0.2, 0.2, 0.14, C.cream, 40), 0, 0.09, 0));
@@ -353,7 +349,16 @@ function cakeTable() {
   sign.rotation.y = Math.PI / 4;
   sign.traverse((o) => flag(o, 'noOcclude'));
   cake.add(sign);
+  return cake;
+}
 
+function cakeTable() {
+  const g = new Group();
+  g.add(flag(at(cyl(0.42, 0.42, 0.06, C.wood, 40), 0, 0.62, 0), 'shade'));
+  g.add(flag(at(cyl(0.05, 0.07, 0.6, C.woodDark, 12), 0, 0.31, 0), 'shade'));
+  g.add(flag(at(cyl(0.22, 0.24, 0.04, C.woodDark, 24), 0, 0.02, 0), 'shade'));
+
+  const cake = buildCake();
   cake.position.y = 0.65;
   g.add(cake);
   g.position.set(0.55, 0.02, -0.15);

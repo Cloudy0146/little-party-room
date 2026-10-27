@@ -9,6 +9,7 @@ import { addPaintedLight } from './room/paint.js';
 import { createConfetti } from './room/confetti.js';
 import { createCoupons } from './ui/coupons.js';
 import { preview } from './clock.js';
+import { arSupport, launchAR, NO_AR_HASH } from './ar.js';
 
 // 镜头限制：只能在房间正面小范围转动，永远看不到墙后和地板下
 const AZIMUTH = MathUtils.degToRad(45);
@@ -17,6 +18,9 @@ const POLAR = MathUtils.degToRad(50);
 const POLAR_MIN = MathUtils.degToRad(38);
 const POLAR_MAX = MathUtils.degToRad(62);
 const CAKE_POLAR = MathUtils.degToRad(56);
+// 3D 蛋糕（AR 打不开时）：可以绕一整圈，上下角度放宽
+const SPIN_POLAR_MIN = MathUtils.degToRad(25);
+const SPIN_POLAR_MAX = MathUtils.degToRad(82);
 const TARGET = new Vector3(-0.1, 0.75, -0.1);
 const DISTANCE = 12;
 const BALLOON_REGROW = 3.5;
@@ -34,6 +38,10 @@ function corners(x0, x1, y0, y1, z0, z1) {
 
 export function startRoom(el) {
   el.hidden = false;
+  const ar = arSupport();
+  // 这台设备本来就没有 AR（例如电脑）：按钮直接写成看 3D 蛋糕，不假装能放到桌上
+  const AR_LABEL = ar === 'none' ? '转一转蛋糕' : '放到桌上看看';
+  if (location.hash === NO_AR_HASH) history.replaceState(null, '', location.href.split('#')[0]);
   const canvas = document.createElement('canvas');
   canvas.className = 'room-canvas';
   el.append(canvas);
@@ -48,15 +56,26 @@ export function startRoom(el) {
     <div class="cake-panel cake-ui">
       <p class="cake-msg"></p>
       <div class="cake-actions">
-        <button class="btn" type="button" data-act="ar">放到桌上看看</button>
+        <button class="btn" type="button" data-act="ar">${AR_LABEL}</button>
         <button class="btn btn-soft" type="button" data-act="back">回到房间</button>
+      </div>
+    </div>
+    <div class="wx-hint" hidden>
+      <svg class="wx-arrow" viewBox="0 0 80 80" aria-hidden="true"><path d="M12 70 C 22 40, 40 22, 66 14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 9"/><path d="M50 8 L68 13 L60 30" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="wx-card">
+        <p class="wx-title">蛋糕要在浏览器里才能放到桌上</p>
+        <p class="wx-step">点右上角 <b>···</b>，选「在浏览器打开」</p>
+        <div class="cake-actions">
+          <button class="btn" type="button" data-act="3d">先看 3D 版</button>
+          <button class="btn btn-soft" type="button" data-act="close">知道了</button>
+        </div>
       </div>
     </div>
     <p class="room-toast"></p>`);
   const $ = (sel) => el.querySelector(sel);
   const title = $('.room-title'), hint = $('.room-hint'), wallet = $('.room-wallet');
   const cakePanel = $('.cake-panel'), cakeMsg = $('.cake-msg'), cakeActions = $('.cake-actions');
-  const toast = $('.room-toast');
+  const toast = $('.room-toast'), wxHint = $('.wx-hint');
 
   // ---------- 场景 ----------
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -106,16 +125,25 @@ export function startRoom(el) {
   controls.maxZoom = 2.2;
   controls.enabled = false;
 
+  // 镜头绕着转的中心：平时是房间中间，3D 蛋糕模式时是蛋糕
+  const pivot = TARGET.clone();
   function placeCamera(azimuth, polar, zoom) {
-    camera.position.setFromSphericalCoords(DISTANCE, polar, azimuth).add(TARGET);
+    camera.position.setFromSphericalCoords(DISTANCE, polar, azimuth).add(pivot);
     camera.zoom = zoom;
-    camera.lookAt(TARGET);
+    camera.lookAt(pivot);
   }
 
   // 取景：每一帧按当前角度，把房间（或蛋糕）完整放进标题和按钮之间的空白里。
   // 转动时房间投影变宽，就自动拉远一点，所以任何角度都不会被切掉。
   const ROOM_PTS = corners(BOUNDS.lo, BOUNDS.hi, BOUNDS.bottom, BOUNDS.top, BOUNDS.lo, BOUNDS.hi);
   const CAKE_PTS = corners(-0.34, 0.34, 0.6, 1.24, -0.34, 0.34).map((p) => p.applyMatrix4(interactive.cake.matrixWorld));
+  // 3D 蛋糕模式用一圈点（而不是方盒的角），绕着转时画面大小不会忽大忽小
+  const RING_PTS = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    for (const y of [0.6, 1.27]) RING_PTS.push(new Vector3(Math.cos(a) * 0.36, y, Math.sin(a) * 0.36).applyMatrix4(interactive.cake.matrixWorld));
+  }
+  const CAKE_CENTER = new Vector3(0, 0.93, 0).applyMatrix4(interactive.cake.matrixWorld);
   const _v = new Vector3();
   let size = { w: 1, h: 1 };
   let roomRes = { top: 0, bottom: 0 };
@@ -136,11 +164,15 @@ export function startRoom(el) {
     return [cx - w / 2 / s, cx + w / 2 / s, cy + yc / s, cy - (h - yc) / s];
   }
 
-  function frame(cakeMix) {
+  function frame(cakeMix, spinMix) {
     camera.updateMatrixWorld();
     let f = fit(ROOM_PTS, roomRes, 14);
     if (cakeMix > 0) {
-      const g = fit(CAKE_PTS, cakeRes, 24);
+      let g = fit(CAKE_PTS, cakeRes, 24);
+      if (spinMix > 0) {
+        const r = fit(RING_PTS, cakeRes, 24), k = ease(spinMix);
+        g = g.map((v, i) => v + (r[i] - v) * k);
+      }
       const k = ease(cakeMix);
       f = f.map((v, i) => v + (g[i] - v) * k);
     }
@@ -204,13 +236,17 @@ export function startRoom(el) {
   let shot = { from: null, to: [AZIMUTH, POLAR, 1], t: 0, duration: 2, done: () => (controls.enabled = true) };
   shot.from = [AZIMUTH - 0.35, POLAR + 0.12, 0.72];
   let mode = 'room';
-  let cakeMix = 0, cakeMixTarget = 0;
+  let cakeMix = 0, cakeMixTarget = 0, spinMix = 0;
 
   const _s = new Spherical();
   function moveCamera(to, duration, done) {
-    _s.setFromVector3(_v.copy(camera.position).sub(TARGET));
-    shot = { from: [_s.theta, _s.phi, camera.zoom], to, t: 0, duration, done };
+    _s.setFromVector3(_v.copy(camera.position).sub(pivot));
+    // 3D 蛋糕可能转了好几圈：走最近的那一边转回来
+    const a0 = _s.theta;
+    const a1 = to[0] + Math.round((a0 - to[0]) / (Math.PI * 2)) * Math.PI * 2;
+    shot = { from: [a0, _s.phi, camera.zoom], to: [a1, to[1], to[2]], t: 0, duration, done };
     controls.enabled = false;
+    controls.autoRotate = false;
   }
 
   // ---------- 提示文字 ----------
@@ -246,6 +282,7 @@ export function startRoom(el) {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
     down = null;
     if (mode === 'cake') return blowCandle();
+    if (mode === 'spin') return;
     const rect = canvas.getBoundingClientRect();
     pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
@@ -317,11 +354,83 @@ export function startRoom(el) {
   }
 
   function leaveCake() {
+    const fromSpin = mode === 'spin';
     mode = 'room';
-    el.classList.remove('cake-mode');
+    el.classList.remove('cake-mode', 'spin-mode');
     cakeMixTarget = 0;
-    moveCamera([AZIMUTH, POLAR, 1], 0.9, () => (controls.enabled = true));
+    spinMix = 0;
+    if (fromSpin) {
+      setPivot(TARGET);
+      setOrbit(false);
+    }
+    moveCamera([AZIMUTH, POLAR, 1], 0.9, () => {
+      showRoom(true);
+      controls.enabled = true;
+    });
   }
+
+  // ---------- 3D 蛋糕：AR 打不开时，只留下蛋糕桌，可以绕一整圈转着看 ----------
+  const roomParts = root.children.filter((o) => o !== interactive.cake);
+  let roomShown = true;
+  function showRoom(on) {
+    if (roomShown === on) return;
+    roomShown = on;
+    for (const o of roomParts) o.visible = on;
+  }
+
+  // 换转动中心时保持镜头方向不变（正交镜头 + 每帧重新取景，所以画面不会跳）
+  function setPivot(p) {
+    _s.setFromVector3(_v.copy(camera.position).sub(pivot));
+    pivot.copy(p);
+    controls.target.copy(p);
+    placeCamera(_s.theta, _s.phi, camera.zoom);
+  }
+
+  function setOrbit(spin) {
+    controls.minAzimuthAngle = spin ? -Infinity : AZIMUTH - AZIMUTH_RANGE;
+    controls.maxAzimuthAngle = spin ? Infinity : AZIMUTH + AZIMUTH_RANGE;
+    controls.minPolarAngle = spin ? SPIN_POLAR_MIN : POLAR_MIN;
+    controls.maxPolarAngle = spin ? SPIN_POLAR_MAX : POLAR_MAX;
+    controls.autoRotateSpeed = 1.6;
+  }
+
+  function enterSpin() {
+    if (mode === 'spin') return;
+    mode = 'spin';
+    el.classList.add('cake-mode', 'spin-mode');
+    wxHint.hidden = true;
+    // 和 AR 里的模型一样，蜡烛是点着的
+    flameT = 0;
+    flame.visible = flameHalo.visible = true;
+    cakeMsg.textContent = '拖一拖，转一圈看看';
+    cakeActions.hidden = false;
+    cakeMixTarget = 1;
+    spinMix = 0.0001;
+    showRoom(false);
+    setPivot(CAKE_CENTER);
+    setOrbit(true);
+    moveCamera([AZIMUTH, CAKE_POLAR, 1], 0.6, () => {
+      controls.enabled = true;
+      controls.autoRotate = true;
+    });
+  }
+
+  function onAR() {
+    if (ar === 'wechat') wxHint.hidden = false;
+    else if (!launchAR(ar, enterSpin)) enterSpin();
+  }
+
+  // Android 没装 ARCore 时，Chrome 会回到这一页并加上 #no-ar
+  window.addEventListener('hashchange', () => {
+    if (location.hash !== NO_AR_HASH) return;
+    history.replaceState(null, '', location.href.split('#')[0]);
+    enterSpin();
+  });
+  wxHint.addEventListener('click', (e) => {
+    const act = e.target.closest('button')?.dataset.act;
+    if (act === '3d') enterSpin();
+    if (act === 'close') wxHint.hidden = true;
+  });
 
   function blowCandle() {
     if (blown) return;
@@ -331,7 +440,7 @@ export function startRoom(el) {
       // 两门礼炮放在盘子左右两边（按画面的左右），往外、往上、稍微往后喷，
       // 彩纸一开始就在牌子外侧，只会往外飞，所以"阿呆"一直看得到
       const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize();
-      const back = new Vector3().subVectors(TARGET, camera.position).setY(0).normalize();
+      const back = new Vector3().subVectors(pivot, camera.position).setY(0).normalize();
       for (const [side, delay] of [[-1, 0], [1, 90], [-1, 260], [1, 330]]) {
         const origin = cakeBase.clone().addScaledVector(right, side * 0.46);
         const dir = right.clone().multiplyScalar(side * 0.75).addScaledVector(back, 0.35).setY(1).normalize();
@@ -346,7 +455,7 @@ export function startRoom(el) {
   cakeActions.addEventListener('click', (e) => {
     const act = e.target.closest('button')?.dataset.act;
     if (act === 'back') leaveCake();
-    if (act === 'ar') say('AR 在 M5 做，先看看效果～');
+    if (act === 'ar') onAR();
   });
 
   // ---------- 动画循环 ----------
@@ -371,7 +480,14 @@ export function startRoom(el) {
       controls.update();
     }
     cakeMix += Math.sign(cakeMixTarget - cakeMix) * Math.min(Math.abs(cakeMixTarget - cakeMix), raw / 0.9);
-    frame(cakeMix);
+    if (spinMix > 0) spinMix = Math.min(1, spinMix + raw / 0.6);
+    frame(cakeMix, spinMix);
+    // 从 3D 蛋糕转回房间：镜头一回到房间正面的范围，就把房间放回来
+    if (!roomShown && mode === 'room') {
+      _s.setFromVector3(_v.copy(camera.position).sub(pivot));
+      const d = Math.abs(MathUtils.euclideanModulo(_s.theta - AZIMUTH + Math.PI, Math.PI * 2) - Math.PI);
+      if (d < AZIMUTH_RANGE + 0.1) showRoom(true);
+    }
 
     // 可互动物件的轻微提示动作
     updateBalloons(dt, t);

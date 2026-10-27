@@ -370,12 +370,17 @@ function roomShadow() {
   return mesh;
 }
 
-function paintSign(mesh) {
+// background：给 AR 导出用，画成不透明的（和牌子同色），避免透明贴图在 Quick Look 里出问题
+export function paintSign(mesh, background) {
   const c = canvas(256, 120);
   const tex = texture(c);
   const draw = () => {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
+    if (background) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
     ctx.fillStyle = '#D9788B';
     ctx.font = '700 88px PartyRound, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
