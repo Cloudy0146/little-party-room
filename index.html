@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#F6C9D0">
+  <title>派对小房间</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%82%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <!-- 倒计时页 -->
+  <main id="countdown" class="screen" hidden>
+    <div class="ghost" aria-hidden="true">
+      <svg viewBox="0 0 300 300">
+        <!-- 底座和地板 -->
+        <polygon points="30,210 150,270 150,284 30,224" fill="#EBA3B3"/>
+        <polygon points="150,270 270,210 270,224 150,284" fill="#DF95A7"/>
+        <polygon points="150,150 270,210 150,270 30,210" fill="#F1D3B6"/>
+        <!-- 两面墙 -->
+        <polygon points="30,210 30,90 150,30 150,150" fill="#FBE9DC"/>
+        <polygon points="150,150 150,30 270,90 270,210" fill="#FFF4E8"/>
+        <!-- 窗户和窗帘 -->
+        <polygon points="190,80 240,105 240,155 190,130" fill="#FFD9A0"/>
+        <path d="M215,92.5 V142.5 M190,105 L240,130" stroke="#FFF4E8" stroke-width="3"/>
+        <polygon points="180,75 192,81 192,141 180,135" fill="#F6C9D0"/>
+        <polygon points="238,104 250,110 250,170 238,164" fill="#F6C9D0"/>
+        <!-- 三角彩旗 -->
+        <path d="M38,104 Q90,92 142,52" stroke="#E8C49A" fill="none" stroke-width="1.5"/>
+        <g>
+          <polygon points="48,101 60,96 56,112" fill="#F6C9D0"/>
+          <polygon points="70,94 82,88 79,104" fill="#CDB8E8"/>
+          <polygon points="92,85 103,78 102,95" fill="#E8B860"/>
+          <polygon points="112,74 122,66 123,83" fill="#EBA3B3"/>
+        </g>
+        <!-- 星星灯串 -->
+        <path d="M156,46 Q205,82 264,96" stroke="#E8C49A" fill="none" stroke-width="1.2"/>
+        <g fill="#FFE2A8" class="twinkle">
+          <circle cx="168" cy="55" r="2.6"/><circle cx="184" cy="65" r="2.6"/>
+          <circle cx="200" cy="73" r="2.6"/><circle cx="217" cy="80" r="2.6"/>
+          <circle cx="234" cy="86" r="2.6"/><circle cx="250" cy="92" r="2.6"/>
+        </g>
+        <!-- 地毯 -->
+        <ellipse cx="150" cy="212" rx="64" ry="32" fill="#CDB8E8" opacity=".85"/>
+        <!-- 盆栽 -->
+        <rect x="236" y="186" width="16" height="16" rx="5" fill="#E8C49A"/>
+        <circle cx="240" cy="180" r="8" fill="#9CC59A"/><circle cx="249" cy="176" r="7" fill="#8DB98B"/>
+        <circle cx="244" cy="170" r="6" fill="#9CC59A"/>
+        <!-- 礼物 -->
+        <rect x="70" y="198" width="28" height="24" rx="5" fill="#EBA3B3"/>
+        <rect x="82" y="198" width="4" height="24" fill="#E8B860"/>
+        <rect x="94" y="208" width="22" height="17" rx="5" fill="#CDB8E8"/>
+        <rect x="103" y="208" width="4" height="17" fill="#E8B860"/>
+        <!-- 小桌和蛋糕 -->
+        <rect x="191" y="204" width="6" height="22" rx="2" fill="#D9B285"/>
+        <ellipse cx="194" cy="204" rx="22" ry="10" fill="#E8C49A"/>
+        <rect x="182" y="186" width="24" height="15" rx="5" fill="#FFF4E8"/>
+        <ellipse cx="194" cy="187" rx="12" ry="5" fill="#F6C9D0"/>
+        <rect x="193" y="175" width="2.5" height="10" rx="1" fill="#E8B860"/>
+        <ellipse cx="194.2" cy="172" rx="2.4" ry="3.6" fill="#FFC56E" class="twinkle"/>
+        <!-- 气球 -->
+        <g class="bob">
+          <path d="M68,142 Q74,170 82,196 M88,129 Q86,165 82,196 M78,112 Q82,150 82,196" stroke="#D7B9A0" fill="none" stroke-width="1"/>
+          <circle cx="68" cy="128" r="14" fill="#F6C9D0"/>
+          <circle cx="88" cy="116" r="13" fill="#CDB8E8"/>
+          <circle cx="78" cy="99" r="12" fill="#EBA3B3"/>
+        </g>
+      </svg>
+    </div>
+
+    <section class="card">
+      <p class="eyebrow">派对小房间 · 布置中</p>
+      <div class="timer" role="timer" aria-live="off">
+        <div class="unit"><b id="d">0</b><span>天</span></div>
+        <div class="unit"><b id="h">00</b><span>时</span></div>
+        <div class="unit"><b id="m">00</b><span>分</span></div>
+        <div class="unit"><b id="s">00</b><span>秒</span></div>
+      </div>
+      <p class="quip" id="quip"></p>
+      <p class="foot">11 月 1 日 00:00 开门</p>
+    </section>
+  </main>
+
+  <!-- 解锁后的入场 -->
+  <main id="entrance" class="screen" hidden>
+    <div class="sprinkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <h1>阿呆，<br>生日快乐</h1>
+    <p class="sub">派对小房间开门了</p>
+    <button id="enter" class="btn" type="button">进入</button>
+  </main>
+
+  <div id="room" hidden></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
