@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { INNER } from './scene.js';
 
 // 阴影偏暖粉色，不用灰黑色
-const SHADOW_TINT = new Color(0xd6a6b2);
+const SHADOW_TINT = new Color(0xc898a4);
 
 export function collectOccluders(root) {
   const list = [];
@@ -39,7 +39,7 @@ function vertexAO(p, n, occluders, self) {
     const cos = (n.x * dx + n.y * dy + n.z * dz) / d;
     if (cos > 0) occ += ((r * r) / d2) * cos * 0.9;
   }
-  return Math.max(1 - occ, 0.55);
+  return Math.max(1 - occ, 0.47);
 }
 
 const _p = new Vector3(), _n = new Vector3(), _m = new Matrix4(), _nm = new Matrix3();

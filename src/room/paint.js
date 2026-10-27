@@ -113,8 +113,8 @@ function contactShadows(surf, occluders, distanceOf, rectOf, near, color = SHADO
     const k = 1 - Math.max(d, 0) / near;
     const [x, y, w, h] = rectOf(o.box);
     const r = Math.min(w, h) * 0.45;
-    surf.soft(surf.a, x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88, r, 0.025 + d * 0.3, `rgba(${color},${0.38 * k * strength})`);
-    surf.soft(surf.a, x - 0.05, y - 0.05, w + 0.1, h + 0.1, r + 0.05, 0.16 + d * 0.3, `rgba(${color},${0.14 * k * strength})`);
+    surf.soft(surf.a, x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88, r, 0.02 + d * 0.25, `rgba(${color},${0.55 * k * strength})`);
+    surf.soft(surf.a, x - 0.05, y - 0.05, w + 0.1, h + 0.1, r + 0.05, 0.14 + d * 0.3, `rgba(${color},${0.2 * k * strength})`);
   }
 }
 
@@ -209,7 +209,7 @@ function paintFloor(occluders, renderer) {
   // 发光：台灯照在地上的暖光、窗户投下的光斑
   const g = surf.g;
   const [lx, lz] = surf.toLocal(new Vector3(LAMP.x, 0, LAMP.z));
-  surf.radial(g, lx, lz, 1.4, '255,176,110', 0.55);
+  surf.radial(g, lx, lz, 1.1, '255,176,110', 0.4);
   const { cx, w } = WINDOW;
   g.save();
   g.globalCompositeOperation = 'lighter';
@@ -301,10 +301,10 @@ function paintWall(side, occluders, renderer) {
   const lamp = new Vector3(LAMP.x, LAMP.shadeY, LAMP.z);
   const [lu, lv] = toLocal(lamp);
   const lampDist = side === 'left' ? LAMP.x - INNER : LAMP.z - INNER;
-  surf.radial(g, lu, lv + 0.1, 0.9 + lampDist, '255,184,118', 0.85 * Math.exp(-lampDist * 1.2));
+  surf.radial(g, lu, lv + 0.1, 0.65 + lampDist, '255,184,118', 0.6 * Math.exp(-lampDist * 1.5));
   if (side === 'right') {
     const [wu, wv] = toLocal(new Vector3(WINDOW.cx, WINDOW.cy, INNER));
-    surf.radial(g, wu, wv, 1.5, '255,206,140', 0.32);
+    surf.radial(g, wu, wv, 1.15, '255,206,140', 0.16);
   }
 
   const mesh = surf.mesh(renderer);
@@ -354,7 +354,7 @@ function roomShadow() {
   const ctx = c.getContext('2d');
   const s = 256 / size;
   ctx.setTransform(s, 0, 0, s, 0, 0);
-  ctx.shadowColor = 'rgba(214,128,150,0.5)';
+  ctx.shadowColor = 'rgba(200,104,130,0.62)';
   ctx.shadowBlur = 0.4 * s;
   ctx.shadowOffsetX = 10000;
   ctx.beginPath();
@@ -412,8 +412,8 @@ export function addPaintedLight(root, occluders, renderer) {
     root.add(s);
     return s;
   };
-  sprite(0xffb062, 0.8, 1.9, new Vector3(LAMP.x + 0.08, LAMP.shadeY - 0.05, LAMP.z + 0.08));
-  sprite(0xffc98a, 0.32, 2.6, new Vector3(WINDOW.cx, WINDOW.cy, INNER + 0.25));
+  sprite(0xffb062, 0.42, 1.15, new Vector3(LAMP.x + 0.08, LAMP.shadeY - 0.05, LAMP.z + 0.08));
+  sprite(0xffc98a, 0.12, 1.5, new Vector3(WINDOW.cx, WINDOW.cy, INNER + 0.25));
   const flame = root.getObjectByName('flame');
   const flameHalo = new Sprite(new SpriteMaterial({ map: halo, color: 0xffb35c, opacity: 0.8, depthWrite: false, blending: AdditiveBlending }));
   flameHalo.scale.setScalar(0.28);

@@ -167,7 +167,13 @@ body {
 
 /* ---------- 房间（占位） ---------- */
 
-#room { position: fixed; inset: 0; animation: fade-in .5s ease both; }
+#room {
+  position: fixed;
+  inset: 0;
+  /* 比倒计时页深一点，让白墙的轮廓清楚 */
+  background: radial-gradient(110% 70% at 50% 35%, #FCEBEA 0%, #F6CDD4 60%, #EDB0BE 100%);
+  animation: fade-in .5s ease both;
+}
 .room-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 .room-hint, .room-toast {

@@ -70,7 +70,7 @@ function shell() {
   const g = new Group();
   // 厚厚的白色圆角地台和墙，做出微缩模型的感觉
   const lo = INNER - WALL_T - 0.05, hi = HALF + 0.06;
-  g.add(at(box(hi - lo, 0.34, hi - lo, C.white, 0.12), (hi + lo) / 2, -0.21, (hi + lo) / 2));
+  g.add(at(box(hi - lo, 0.34, hi - lo, 0xf7dfe2, 0.12), (hi + lo) / 2, -0.21, (hi + lo) / 2));
   g.add(at(box(ROOM, 0.06, ROOM, C.wood, 0.02), 0, -0.01, 0));
   const wallH = WALL_H + 0.04;
   g.add(at(box(WALL_T, wallH, HALF - INNER, C.white, 0.1), INNER - WALL_T / 2, wallH / 2 - 0.04, (HALF + INNER) / 2));
@@ -187,14 +187,14 @@ function bunting() {
   return g;
 }
 
-export const LAMP = { x: -0.72, z: -1.15, shadeY: 1.38 };
+export const LAMP = { x: -1.12, z: -1.12, shadeY: 1.38 };
 
 function lamp() {
   const g = new Group();
   g.add(flag(at(cyl(0.16, 0.18, 0.05, C.wood), 0, 0.025, 0), 'shade'));
   g.add(flag(at(cyl(0.02, 0.02, 1.25, C.gold, 8), 0, 0.65, 0), 'shade'));
   // 灯罩本身发光
-  g.add(flag(at(new Mesh(new CylinderGeometry(0.15, 0.24, 0.28, 32), glow(0xfff0d4)), 0, LAMP.shadeY, 0), 'shade'));
+  g.add(flag(at(new Mesh(new CylinderGeometry(0.15, 0.24, 0.28, 32), glow(0xffe6c0)), 0, LAMP.shadeY, 0), 'shade'));
   g.add(at(cyl(0.155, 0.155, 0.03, C.pink, 32), 0, LAMP.shadeY + 0.14, 0));
   g.add(at(cyl(0.245, 0.245, 0.03, C.pink, 32), 0, LAMP.shadeY - 0.14, 0));
   g.position.set(LAMP.x, 0.02, LAMP.z);
@@ -331,11 +331,12 @@ function cakeTable() {
 
   // 插在蛋糕上的牌子，比蜡烛高，放在蜡烛后面；"阿呆"两个字由 paint.js 画上去
   const sign = new Group();
-  sign.add(at(box(0.34, 0.16, 0.014, C.white, 0.03), 0, 0.6, 0));
-  for (const s of [-1, 1]) sign.add(at(cyl(0.005, 0.005, 0.36, C.gold, 6), s * 0.12, 0.43, -0.01));
+  sign.add(at(box(0.34, 0.16, 0.014, C.white, 0.03), 0, 0.53, 0));
+  // 两根插进蛋糕的小棍
+  for (const s of [-1, 1]) sign.add(at(cyl(0.009, 0.009, 0.26, 0xd9a441, 8), s * 0.11, 0.36, -0.012));
   const label = new Mesh(new PlaneGeometry(0.32, 0.15), new MeshBasicMaterial({ transparent: true }));
   label.name = 'signLabel';
-  sign.add(flag(at(label, 0, 0.6, 0.0085), 'keep'));
+  sign.add(flag(at(label, 0, 0.53, 0.0085), 'keep'));
   sign.position.set(-0.05, 0, -0.05);
   sign.rotation.y = Math.PI / 4;
   sign.traverse((o) => flag(o, 'noOcclude'));

@@ -30,15 +30,15 @@ export function startRoom(el) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.toneMapping = NeutralToneMapping;
-  renderer.toneMappingExposure = 1.22; // 高调画面
+  renderer.toneMappingExposure = 1.1; // 偏高调，但保留对比和粉色饱和度
 
   const scene = new Scene();
   // 天空偏奶油、地面偏粉：物体朝下的面会带一点地板反上来的粉色
-  scene.add(new HemisphereLight(0xfff8f2, 0xf8ccd4, 2.6));
-  const sun = new DirectionalLight(0xfff2e2, 1.3);
+  scene.add(new HemisphereLight(0xfff6ee, 0xf6c6cf, 2.35));
+  const sun = new DirectionalLight(0xfff0dd, 1.45);
   sun.position.set(3, 6, 4);
   scene.add(sun);
-  const lampLight = new PointLight(0xffb070, 3.2, 3.2, 1.1);
+  const lampLight = new PointLight(0xffb070, 2.2, 2.8, 1.2);
   lampLight.position.set(LAMP.x + 0.1, LAMP.shadeY - 0.2, LAMP.z + 0.1);
   scene.add(lampLight);
 
