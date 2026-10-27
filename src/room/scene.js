@@ -81,10 +81,13 @@ function shell() {
 
   // 墙裙上沿的装饰条和踢脚线
   const trims = new Group();
+  // 右墙的两条从墙角让开左墙那条的厚度，两条不在墙角重叠（重叠的顶面转动时会闪）
+  const rightLen = HALF - 0.01 - (INNER + 0.035);
+  const rightX = (HALF - 0.01 + INNER + 0.035) / 2;
   trims.add(at(box(0.035, 0.05, ROOM - 0.02, C.white, 0.015), INNER + 0.015, 0.8, 0));
-  trims.add(at(box(ROOM - 0.02, 0.05, 0.035, C.white, 0.015), 0, 0.8, INNER + 0.015));
+  trims.add(at(box(rightLen, 0.05, 0.035, C.white, 0.015), rightX, 0.8, INNER + 0.015));
   trims.add(at(box(0.03, 0.09, ROOM - 0.02, C.pinkDeep, 0.012), INNER + 0.012, 0.065, 0));
-  trims.add(at(box(ROOM - 0.02, 0.09, 0.03, C.pinkDeep, 0.012), 0, 0.065, INNER + 0.012));
+  trims.add(at(box(rightLen, 0.09, 0.03, C.pinkDeep, 0.012), rightX, 0.065, INNER + 0.012));
   trims.traverse((o) => flag(o, 'noOcclude'));
   g.add(trims);
   return g;
@@ -122,9 +125,10 @@ function windowOnRightWall() {
   g.add(at(box(w + 0.12, h + 0.12, 0.06, C.white, 0.04), cx, cy, z));
   const glass = new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ color: C.warm }));
   glass.name = 'glass';
-  g.add(flag(at(glass, cx, cy, z + 0.032), 'keep', 'noOcclude'));
-  g.add(flag(at(box(0.04, h, 0.03, C.white, 0.012), cx, cy, z + 0.05), 'noOcclude'));
-  g.add(flag(at(box(w, 0.04, 0.03, C.white, 0.012), cx, cy + 0.08, z + 0.05), 'noOcclude'));
+  // 玻璃比窗框前表面（z+0.03）高出 5mm；窗格的十字再往前，横竖两根前表面错开
+  g.add(flag(at(glass, cx, cy, z + 0.035), 'keep', 'noOcclude'));
+  g.add(flag(at(box(0.04, h, 0.03, C.white, 0.012), cx, cy, z + 0.058), 'noOcclude'));
+  g.add(flag(at(box(w, 0.04, 0.03, C.white, 0.012), cx, cy + 0.08, z + 0.054), 'noOcclude'));
   g.add(flag(at(box(w + 0.3, 0.06, 0.12, C.white, 0.03), cx, cy - h / 2 - 0.08, z + 0.06), 'shade'));
   for (const side of [-1, 1]) {
     g.add(flag(at(curtain(0.28, h + 0.32), cx + side * (w / 2 + 0.12), cy - 0.06, z + 0.11), 'shade'));
@@ -197,18 +201,22 @@ function lamp() {
   g.add(flag(at(cyl(0.02, 0.02, 1.25, C.gold, 8), 0, 0.65, 0), 'shade'));
   // 灯罩本身发光
   g.add(flag(at(new Mesh(new CylinderGeometry(0.15, 0.24, 0.28, 32), glow(0xffe6c0)), 0, LAMP.shadeY, 0), 'shade'));
-  g.add(at(cyl(0.155, 0.155, 0.03, C.pink, 32), 0, LAMP.shadeY + 0.14, 0));
-  g.add(at(cyl(0.245, 0.245, 0.03, C.pink, 32), 0, LAMP.shadeY - 0.14, 0));
+  // 灯罩上下的滚边：比灯罩粗 1.5cm，灯罩的顶面和底面藏在滚边里面，没有贴在一起的面
+  g.add(at(cyl(0.165, 0.165, 0.034, C.pink, 32), 0, LAMP.shadeY + 0.14, 0));
+  g.add(at(cyl(0.255, 0.255, 0.034, C.pink, 32), 0, LAMP.shadeY - 0.14, 0));
   g.position.set(LAMP.x, 0.02, LAMP.z);
   return g;
 }
 
 function plant() {
   const g = new Group();
-  g.add(flag(at(cyl(0.17, 0.13, 0.32, C.pinkDeep), 0, 0.16, 0), 'shade'));
-  g.add(at(cyl(0.175, 0.175, 0.04, C.pink), 0, 0.32, 0));
-  g.add(at(cyl(0.15, 0.15, 0.02, 0x9b7a5c), 0, 0.33, 0));
-  const leaves = [[0, 0.52, 0, 0.18], [0.11, 0.64, 0.05, 0.14], [-0.1, 0.68, -0.03, 0.13], [0.02, 0.82, 0, 0.11], [-0.06, 0.55, 0.1, 0.12]];
+  // 盆身顶面在 0.30；盆口是一圈空心圆环（顶到 0.346），土壤顶面在 0.316，陷在环里面
+  g.add(flag(at(cyl(0.17, 0.13, 0.3, C.pinkDeep), 0, 0.15, 0), 'shade'));
+  const rim = new Mesh(new TorusGeometry(0.16, 0.026, 8, 32), mat(C.pink));
+  rim.rotation.x = -Math.PI / 2;
+  g.add(at(rim, 0, 0.32, 0));
+  g.add(at(cyl(0.148, 0.148, 0.03, 0x9b7a5c), 0, 0.301, 0));
+  const leaves = [[0, 0.49, 0, 0.18], [0.11, 0.64, 0.05, 0.14], [-0.1, 0.68, -0.03, 0.13], [0.02, 0.82, 0, 0.11], [-0.06, 0.55, 0.1, 0.12]];
   leaves.forEach(([x, y, z, r], i) => g.add(at(ball(r, i % 2 ? C.sageDark : C.sage), x, y, z)));
   g.position.set(1.15, 0.02, -1.12);
   return g;
@@ -247,7 +255,8 @@ function gifts() {
     const b = new Group();
     b.add(flag(at(box(w, h, d, color, 0.06), 0, h / 2, 0), 'shade'));
     b.add(at(box(w + 0.012, h + 0.012, 0.055, ribbon, 0.015), 0, h / 2, 0));
-    b.add(at(box(0.055, h + 0.012, d + 0.012, ribbon, 0.015), 0, h / 2, 0));
+    // 第二条丝带高一点点，两条丝带交叉处的顶面不重叠
+    b.add(at(box(0.055, h + 0.022, d + 0.012, ribbon, 0.015), 0, h / 2, 0));
     for (const s of [-1, 1]) {
       const loop = ball(0.065, ribbon, 12, 8);
       loop.scale.set(1.25, 0.7, 0.6);
@@ -339,7 +348,7 @@ function cakeTable() {
   for (const s of [-1, 1]) sign.add(at(cyl(0.009, 0.009, 0.26, 0xd9a441, 8), s * 0.11, 0.36, -0.012));
   const label = new Mesh(new PlaneGeometry(0.32, 0.15), new MeshBasicMaterial({ transparent: true }));
   label.name = 'signLabel';
-  sign.add(flag(at(label, 0, 0.53, 0.0085), 'keep'));
+  sign.add(flag(at(label, 0, 0.53, 0.011), 'keep')); // 离牌子表面 4mm
   sign.position.set(-0.05, 0, -0.05);
   sign.rotation.y = Math.PI / 4;
   sign.traverse((o) => flag(o, 'noOcclude'));

@@ -47,16 +47,22 @@ export function createConfetti() {
   const points = new Points(geo, material);
   points.frustumCulled = false;
 
-  // 从某个点炸开一团彩纸
-  function burst(origin, { count = 60, speed = 2.2, up = 1.2, colors } = {}) {
+  // 从某个点炸开一团彩纸。给了 dir 就像礼炮一样朝那个方向喷（spread 是散开的程度）
+  function burst(origin, { count = 60, speed = 2.2, up = 1.2, colors, dir, spread = 0.5 } = {}) {
     const palette = colors ? colors.map(hex) : PALETTE;
     for (let n = 0; n < count; n++) {
       const i = next;
       next = (next + 1) % MAX;
-      const a = Math.random() * Math.PI * 2;
-      const r = Math.random();
       pos.set([origin.x + (Math.random() - 0.5) * 0.08, origin.y + (Math.random() - 0.5) * 0.08, origin.z + (Math.random() - 0.5) * 0.08], i * 3);
-      vel.set([Math.cos(a) * r * speed, up + Math.random() * speed * 0.8, Math.sin(a) * r * speed], i * 3);
+      if (dir) {
+        const s = speed * (0.55 + Math.random() * 0.6);
+        const j = () => (Math.random() - 0.5) * spread * speed;
+        vel.set([dir.x * s + j(), dir.y * s + j(), dir.z * s + j()], i * 3);
+      } else {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random();
+        vel.set([Math.cos(a) * r * speed, up + Math.random() * speed * 0.8, Math.sin(a) * r * speed], i * 3);
+      }
       col.set(Math.random() < 0.5 ? palette[n % palette.length] : PALETTE[n % PALETTE.length], i * 3);
       life[i] = 2.2 + Math.random() * 1.2;
       phase[i] = Math.random() * 10;

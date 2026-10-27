@@ -2,6 +2,9 @@
 
 .sheet {
   --sheet-bg: #FCE9EB;
+  /* 所有券一样高：按字最多的"头像券"（3 行）量出来的，宽度变化不影响（断行是固定的） */
+  --coupon-w: min(86vw, 330px);
+  --coupon-h: 268px;
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -46,8 +49,6 @@
   position: relative;
   width: var(--coupon-w);
   height: var(--coupon-h);
-  --coupon-w: min(86vw, 330px);
-  --coupon-h: calc(var(--coupon-w) * 0.78);
   margin-bottom: 22px; /* 给后面叠着的牌留位置，不压到按钮 */
 }
 
@@ -129,7 +130,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(86vw, 330px);
+  width: var(--coupon-w, min(86vw, 330px));
+  min-height: var(--coupon-h, 0);
   border-radius: 20px;
   background: #FFFBF7;
   box-shadow: 0 16px 30px -18px rgba(160, 80, 100, .9);
@@ -141,6 +143,9 @@
 .theme-game { --accent: #7FB27E; --tint: #EEF7EE; }
 
 .coupon-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   margin: 10px 10px 0;
   padding: 12px 16px 14px;
   border: 2px dashed var(--accent);
@@ -155,7 +160,9 @@
   letter-spacing: .08em;
   color: var(--ink-soft);
 }
-.coupon-icon { width: 46px; height: 46px; margin: 4px auto 2px; color: var(--accent); }
+.coupon-icon { width: 46px; height: 46px; margin: auto auto 2px; padding-top: 4px; box-sizing: content-box; color: var(--accent); }
+/* 字少的券：编号留在顶上，图标到正文这一块在剩下的空间里上下居中 */
+.coupon-main > p { margin-bottom: auto; }
 .coupon-icon svg { display: block; width: 100%; height: 100%; }
 .coupon h3 {
   margin: 0;
@@ -166,6 +173,13 @@
   filter: brightness(.82) saturate(1.2);
 }
 .coupon p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; }
+/* 断行位置在 src/coupons.js 里手动指定：每行一个 span，行内不换行 */
+.coupon p .line { display: block; white-space: nowrap; }
+.coupon-stub .seg { display: inline-block; white-space: nowrap; }
+@media (max-width: 340px) {
+  .coupon p { font-size: 14px; }
+  .coupon-stub { font-size: 11px; }
+}
 
 /* 撕线：两侧半圆缺口 + 虚线 */
 .coupon-stub {

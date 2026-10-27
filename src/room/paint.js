@@ -231,7 +231,8 @@ function paintFloor(occluders, renderer) {
 
   const mesh = surf.mesh(renderer);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set((x0 + x1) / 2, 0.021, (z0 + z1) / 2);
+  // 比地板木块顶面（0.02）高 4mm，避免两个面重叠闪烁
+  mesh.position.set((x0 + x1) / 2, 0.024, (z0 + z1) / 2);
   return mesh;
 }
 
@@ -309,11 +310,12 @@ function paintWall(side, occluders, renderer) {
 
   const mesh = surf.mesh(renderer);
   const cy = (y0 + y1) / 2;
+  // 离墙面 4mm，避免和墙重叠闪烁
   if (side === 'left') {
     mesh.rotation.y = Math.PI / 2;
-    mesh.position.set(INNER + 0.002, cy, (a0 + a1) / 2);
+    mesh.position.set(INNER + 0.004, cy, (a0 + a1) / 2);
   } else {
-    mesh.position.set((a0 + a1) / 2, cy, INNER + 0.002);
+    mesh.position.set((a0 + a1) / 2, cy, INNER + 0.004);
   }
   return mesh;
 }

@@ -49,9 +49,9 @@ function couponHTML(id, index) {
         <div class="coupon-meta"><span>No.1101-0${index + 1}</span><span>阿呆专用</span></div>
         <div class="coupon-icon">${ICONS[c.id]}</div>
         <h3>${c.title}</h3>
-        <p>${c.body}</p>
+        <p>${c.body.split('\n').map((l) => `<span class="line">${l}</span>`).join('')}</p>
       </div>
-      <div class="coupon-stub">${COUPON_FOOTER}</div>
+      <div class="coupon-stub">${COUPON_FOOTER.map((s) => `<span class="seg">${s}</span>`).join('<span class="dot"> · </span>')}</div>
     </article>`;
 }
 

@@ -85,11 +85,13 @@ export function startRoom(el) {
 
   const flame = interactive.cake.getObjectByName('flame');
   const flameHalo = interactive.cake.getObjectByName('flameHalo');
-  const cakeTop = new Vector3(0, 1.0, 0).applyMatrix4(interactive.cake.matrixWorld);
+  const cakeBase = new Vector3(0, 0.69, 0).applyMatrix4(interactive.cake.matrixWorld); // 盘子上方一点
   const balloons = interactive.balloons.children.filter((b) => b.userData.base !== undefined);
 
   // ---------- 镜头 ----------
-  const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
+  // 镜头离目标点固定 12 米，房间在它前后 3 米以内：近远平面收紧到 7–17 米，
+  // 就算手机只有 16 位深度缓冲，精度也有约 0.15mm，几毫米的高度差就不会闪
+  const camera = new OrthographicCamera(-1, 1, 1, -1, DISTANCE - 5, DISTANCE + 5);
   const controls = new OrbitControls(camera, canvas);
   controls.target.copy(TARGET);
   controls.enablePan = false;
@@ -326,8 +328,15 @@ export function startRoom(el) {
     blown = true;
     flameT = 0.0001;
     setTimeout(() => {
-      confetti.burst(cakeTop, { count: 110, speed: 2.6, up: 2.6 });
-      setTimeout(() => confetti.burst(cakeTop, { count: 70, speed: 3, up: 2 }), 180);
+      // 两门礼炮放在盘子左右两边（按画面的左右），往外、往上、稍微往后喷，
+      // 彩纸一开始就在牌子外侧，只会往外飞，所以"阿呆"一直看得到
+      const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize();
+      const back = new Vector3().subVectors(TARGET, camera.position).setY(0).normalize();
+      for (const [side, delay] of [[-1, 0], [1, 90], [-1, 260], [1, 330]]) {
+        const origin = cakeBase.clone().addScaledVector(right, side * 0.46);
+        const dir = right.clone().multiplyScalar(side * 0.75).addScaledVector(back, 0.35).setY(1).normalize();
+        setTimeout(() => confetti.burst(origin, { count: delay < 200 ? 60 : 40, speed: 3.4, dir, spread: 0.35 }), delay);
+      }
       cakeMsg.textContent = '呼——灭了。生日快乐！';
       cakeActions.hidden = false;
     }, 260);
