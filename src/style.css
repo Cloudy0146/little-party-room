@@ -165,39 +165,124 @@ body {
 .sprinkles i:nth-child(7) { left: 86%; background: var(--gold);      animation-delay: -7s; width: 7px; height: 7px; }
 .sprinkles i:nth-child(8) { left: 94%; background: var(--sage);      animation-delay: -5s; }
 
-/* ---------- 房间（占位） ---------- */
+/* ---------- 房间 ---------- */
 
 #room {
   position: fixed;
   inset: 0;
   /* 比倒计时页深一点，让白墙的轮廓清楚 */
-  background: radial-gradient(110% 70% at 50% 35%, #FCEBEA 0%, #F6CDD4 60%, #EDB0BE 100%);
+  background: radial-gradient(110% 70% at 50% 40%, #FCEBEA 0%, #F6CDD4 60%, #EDB0BE 100%);
   animation: fade-in .5s ease both;
 }
 .room-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-.room-hint, .room-toast {
+/* 房间模式和蛋糕特写各自的界面，用透明度切换（保留尺寸，方便取景计算） */
+.room-ui, .cake-ui { transition: opacity .35s ease; }
+.cake-ui { opacity: 0; pointer-events: none; }
+.cake-mode .room-ui { opacity: 0; pointer-events: none; }
+.cake-mode .cake-ui { opacity: 1; pointer-events: auto; }
+
+.room-title {
   position: absolute;
-  left: 50%;
-  margin: 0;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(255, 248, 241, .9);
-  box-shadow: 0 8px 20px -12px rgba(203, 120, 140, .8);
-  font-size: 14px;
-  color: var(--ink);
-  transform: translateX(-50%);
+  top: 0; /* 实际位置由 room.js 按屏幕长度计算 */
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  text-align: center;
   pointer-events: none;
-  white-space: nowrap;
+  animation: appear .6s 1.2s ease backwards;
+}
+.room-title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #C9707F;
+  text-shadow: 0 2px 0 #fff;
 }
 .room-hint {
-  bottom: max(28px, env(safe-area-inset-bottom));
-  animation: appear .6s 2.2s ease both, hint-pulse 2.4s 2.8s ease-in-out infinite;
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 248, 241, .9);
+  box-shadow: 0 6px 16px -10px rgba(203, 120, 140, .8);
+  font-size: 13px;
+  color: var(--ink);
+  animation: hint-pulse-plain 2.4s 2.4s ease-in-out infinite;
   transition: opacity .4s ease;
 }
 .room-hint.gone { opacity: 0; animation: none; }
+
+.room-wallet {
+  position: absolute;
+  left: 50%;
+  top: 0; /* 实际位置由 room.js 计算 */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 22px 12px 18px;
+  font-size: 16px;
+  letter-spacing: .1em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: appear .6s 1.4s ease backwards;
+}
+.room-wallet svg { width: 22px; height: 22px; }
+.room-wallet b {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .9);
+  color: #C9707F;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.room-wallet:active { transform: translateX(-50%) scale(.95); }
+
+.cake-close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 14px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 6px 14px -8px rgba(203, 120, 140, .8);
+  color: #C9707F;
+  font: 600 14px var(--font);
+  cursor: pointer;
+}
+
+.cake-panel {
+  position: absolute;
+  left: 50%;
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+  width: min(calc(100% - 32px), 360px);
+  padding: 16px 16px 18px;
+  border-radius: 24px;
+  background: rgba(255, 248, 241, .92);
+  box-shadow: 0 14px 30px -18px rgba(203, 120, 140, .8);
+  text-align: center;
+  transform: translateX(-50%);
+}
+.cake-msg { margin: 0; font-size: 16px; color: var(--ink); }
+.cake-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.cake-actions .btn { width: 100%; letter-spacing: .12em; }
+
 .room-toast {
-  top: max(24px, env(safe-area-inset-top));
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(122, 78, 90, .82);
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
   opacity: 0;
   transition: opacity .25s ease;
 }
@@ -210,7 +295,7 @@ body {
 @keyframes fade-out { to { opacity: 0; transform: scale(1.04); } }
 @keyframes bob { 50% { transform: translateY(-5px) rotate(-1.5deg); } }
 @keyframes twinkle { 50% { opacity: .55; } }
-@keyframes hint-pulse { 50% { transform: translateX(-50%) scale(1.06); } }
+@keyframes hint-pulse-plain { 50% { transform: scale(1.06); } }
 @keyframes drift {
   from { transform: translateY(0) translateX(0); }
   50%  { transform: translateY(55vh) translateX(14px); }

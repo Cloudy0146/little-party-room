@@ -36,6 +36,8 @@ export const HALF = ROOM / 2;
 export const WALL_H = 2.2;
 const WALL_T = 0.26;
 export const INNER = -HALF + 0.01; // 两面墙内侧表面的位置
+// 整个房间（地台+墙）的外框，镜头取景用
+export const BOUNDS = { lo: INNER - WALL_T - 0.05, hi: HALF + 0.06, bottom: -0.38, top: WALL_H };
 
 const mats = new Map();
 const mat = (color) => {
@@ -69,7 +71,7 @@ const flag = (obj, ...keys) => {
 function shell() {
   const g = new Group();
   // 厚厚的白色圆角地台和墙，做出微缩模型的感觉
-  const lo = INNER - WALL_T - 0.05, hi = HALF + 0.06;
+  const { lo, hi } = BOUNDS;
   g.add(at(box(hi - lo, 0.34, hi - lo, 0xf7dfe2, 0.12), (hi + lo) / 2, -0.21, (hi + lo) / 2));
   g.add(at(box(ROOM, 0.06, ROOM, C.wood, 0.02), 0, -0.01, 0));
   const wallH = WALL_H + 0.04;
@@ -291,6 +293,7 @@ function balloons() {
     b.add(at(new Mesh(knot, mat(color)), 0, -r * 1.15 - 0.02, 0));
     b.position.set(x, y, z);
     b.userData.phase = i * 1.3;
+    b.userData.color = color;
     b.userData.base = y;
     flag(b, 'unit');
     g.add(b);

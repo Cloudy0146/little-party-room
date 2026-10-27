@@ -417,14 +417,15 @@ export function addPaintedLight(root, occluders, renderer) {
   const flame = root.getObjectByName('flame');
   const flameHalo = new Sprite(new SpriteMaterial({ map: halo, color: 0xffb35c, opacity: 0.8, depthWrite: false, blending: AdditiveBlending }));
   flameHalo.scale.setScalar(0.28);
+  flameHalo.name = 'flameHalo';
   flame.parent.add(flameHalo);
   flameHalo.position.copy(flame.position);
 
   // 每帧更新：点的大小要跟着缩放走（正交镜头下点大小是像素）
-  return (camera, t) => {
+  return (camera, t, flameOut) => {
     const pxPerMeter = renderer.domElement.height / ((camera.top - camera.bottom) / camera.zoom);
     bulbs.material.size = 0.17 * pxPerMeter;
     bulbs.material.opacity = 0.5 + Math.sin(t * 2.2) * 0.1;
-    flameHalo.material.opacity = 0.7 + Math.sin(t * 13) * 0.1;
+    if (!flameOut) flameHalo.material.opacity = 0.7 + Math.sin(t * 13) * 0.1;
   };
 }

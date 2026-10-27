@@ -1,0 +1,216 @@
+/* ---------- 弹出层 ---------- */
+
+.sheet {
+  --sheet-bg: #FCE9EB;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: max(56px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  background: var(--sheet-bg);
+  overflow-y: auto;
+  animation: appear .25s ease both;
+}
+.sheet.closing { animation: fade-out .25s ease both; }
+
+.sheet-close {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink-soft);
+  font: 400 26px/40px var(--font);
+  box-shadow: 0 6px 14px -8px rgba(203, 120, 140, .8);
+  cursor: pointer;
+}
+
+.sheet-title { margin: 0; font-size: 20px; font-weight: 700; color: #C9707F; }
+.sheet-count { margin-left: 6px; font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+.sheet-hint { margin: 0; font-size: 14px; color: var(--ink-soft); animation: hint-blink 1.6s ease-in-out infinite; }
+.sheet-note { margin: 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
+.btn-soft { background: #fff; color: #C9707F; letter-spacing: .1em; }
+
+@keyframes hint-blink { 50% { opacity: .45; } }
+
+/* ---------- 翻牌 ---------- */
+
+.deck {
+  position: relative;
+  width: var(--coupon-w);
+  height: var(--coupon-h);
+  --coupon-w: min(86vw, 330px);
+  --coupon-h: calc(var(--coupon-w) * 0.78);
+  margin-bottom: 22px; /* 给后面叠着的牌留位置，不压到按钮 */
+}
+
+.deck-ghost {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: #F2B9C6;
+  transform: translate(calc(var(--k) * 6px), calc(var(--k) * 7px)) rotate(calc(var(--k) * 1.6deg));
+  box-shadow: 0 10px 20px -14px rgba(160, 80, 100, .7);
+}
+
+.flip {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  perspective: 1200px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  animation: deal-in .35s cubic-bezier(.2, .8, .3, 1.2) both;
+}
+.flip.away { animation: deal-out .28s ease-in both; }
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform .6s cubic-bezier(.3, .7, .3, 1.15);
+}
+.flip.open .flip-inner { transform: rotateY(180deg); }
+
+.flip-front, .flip-back {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.flip-back { transform: rotateY(180deg); }
+
+/* 牌背：粉色圆点信封 */
+.flip-front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .55) 2.5px, transparent 3px) 0 0 / 18px 18px,
+    linear-gradient(160deg, #F7C3CF, #EBA3B3);
+  box-shadow: 0 16px 30px -18px rgba(160, 80, 100, .9), inset 0 0 0 6px rgba(255, 255, 255, .55);
+  color: #fff;
+}
+.flip-front p { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .2em; }
+.seal {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #F6D58C, var(--gold));
+  box-shadow: 0 6px 12px -6px rgba(140, 90, 20, .8), inset 0 -3px 0 rgba(0, 0, 0, .08);
+  font-size: 30px;
+  line-height: 64px;
+  color: #fff;
+}
+
+@keyframes deal-in { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+@keyframes deal-out { to { opacity: 0; transform: translateX(-60vw) rotate(-14deg); } }
+
+/* ---------- 券 ---------- */
+
+.coupon {
+  --accent: #EBA3B3;
+  --tint: #FDEFF2;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(86vw, 330px);
+  border-radius: 20px;
+  background: #FFFBF7;
+  box-shadow: 0 16px 30px -18px rgba(160, 80, 100, .9);
+  text-align: center;
+  color: var(--ink);
+}
+.theme-avatar { --accent: #B39BDF; --tint: #F3EEFC; }
+.theme-reply { --accent: #DDA94A; --tint: #FDF5E3; }
+.theme-game { --accent: #7FB27E; --tint: #EEF7EE; }
+
+.coupon-main {
+  margin: 10px 10px 0;
+  padding: 12px 16px 14px;
+  border: 2px dashed var(--accent);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: radial-gradient(circle at 50% 0, var(--tint), #FFFBF7 70%);
+}
+.coupon-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink-soft);
+}
+.coupon-icon { width: 46px; height: 46px; margin: 4px auto 2px; color: var(--accent); }
+.coupon-icon svg { display: block; width: 100%; height: 100%; }
+.coupon h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--accent);
+  filter: brightness(.82) saturate(1.2);
+}
+.coupon p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; }
+
+/* 撕线：两侧半圆缺口 + 虚线 */
+.coupon-stub {
+  position: relative;
+  margin: 0 10px 10px;
+  padding: 10px 12px;
+  border: 2px dashed var(--accent);
+  border-top: 2px dotted var(--accent);
+  border-radius: 0 0 14px 14px;
+  background: var(--tint);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.coupon-stub::before, .coupon-stub::after {
+  content: '';
+  position: absolute;
+  top: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--sheet-bg, #FCE9EB);
+}
+.coupon-stub::before { left: -23px; }
+.coupon-stub::after { right: -23px; }
+
+.flip-back .coupon { width: 100%; height: 100%; }
+.flip-back .coupon-main { flex: 1; }
+
+.coupon-locked {
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 2px dashed #EBC2CB;
+  background: rgba(255, 255, 255, .5);
+  box-shadow: none;
+  color: var(--ink-soft);
+}
+.coupon-locked p { margin: 0; font-size: 16px; font-weight: 700; }
+.coupon-locked span { font-size: 12px; margin-top: 4px; }
+
+/* ---------- 券包 ---------- */
+
+.sheet-list { justify-content: flex-start; }
+.wallet { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.wallet-item { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.wallet-item:active { transform: scale(.98); }
+
+.single { animation: deal-in .35s ease both; }
