@@ -25,28 +25,47 @@ function shuffle(a) {
   return a;
 }
 
-// 读写都包 try/catch：存储不能用时就当第一次，照常能抽
+const valid = (s) => s && Array.isArray(s.order) && s.order.length === IDS.length
+  && IDS.every((id) => s.order.includes(id)) && Number.isInteger(s.opened) && s.opened >= 0 && s.opened <= IDS.length;
+
+// 进度也写在网址的 # 里（例如 #c=20313：抽到的顺序 + 拆了几张），
+// 这样从微信"在浏览器打开"时，如果网址原样带过去，进度也能跟着走。只有顺序和数字，没有个人信息
+function fromHash() {
+  const m = location.hash.match(/^#c=([0-3]{4})([0-4])$/);
+  if (!m) return null;
+  const s = { order: [...m[1]].map((i) => IDS[i]), opened: Number(m[2]) };
+  return valid(s) ? s : null;
+}
+export function writeHash(s) {
+  if (!s.opened) return;
+  try {
+    history.replaceState(history.state, '', `${location.href.split('#')[0]}#c=${s.order.map((id) => IDS.indexOf(id)).join('')}${s.opened}`);
+  } catch {}
+}
+
+// 读写都包 try/catch：存储不能用时就当第一次，照常能抽。网址里的进度比较多时用网址的
 function load() {
+  let local = null;
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    const ok = s && Array.isArray(s.order) && s.order.length === IDS.length
-      && IDS.every((id) => s.order.includes(id)) && Number.isInteger(s.opened) && s.opened >= 0 && s.opened <= IDS.length;
-    if (ok) return s;
+    if (valid(s)) local = s;
   } catch {}
-  return { order: shuffle(IDS), opened: 0 };
+  const hash = fromHash();
+  if (hash && (!local || hash.opened > local.opened)) return hash;
+  return local ?? { order: shuffle(IDS), opened: 0 };
 }
 function save(s) {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
   } catch {}
+  writeHash(s);
 }
 
-function couponHTML(id, index) {
+function couponHTML(id) {
   const c = COUPONS.find((x) => x.id === id);
   return `
     <article class="coupon theme-${c.id}">
       <div class="coupon-main">
-        <div class="coupon-meta"><span>No.1101-0${index + 1}</span><span>阿呆专用</span></div>
         <div class="coupon-icon">${ICONS[c.id]}</div>
         <h3>${c.title}</h3>
         <p>${c.body.split('\n').map((l) => `<span class="line">${l}</span>`).join('')}</p>
@@ -63,6 +82,7 @@ function el(html) {
 
 export function createCoupons({ onChange, onOpen, onClose }) {
   const state = load();
+  save(state); // 两边对齐：网址带来的进度存进本机，本机的进度写进网址
   let sheet = null;
 
   function close() {
@@ -108,7 +128,7 @@ export function createCoupons({ onChange, onOpen, onClose }) {
         <button class="flip" type="button" aria-label="翻开第 ${i + 1} 张">
           <div class="flip-inner">
             <div class="flip-front"><div class="seal">★</div><p>第 ${i + 1} 张</p></div>
-            <div class="flip-back">${couponHTML(state.order[i], i)}</div>
+            <div class="flip-back">${couponHTML(state.order[i])}</div>
           </div>
         </button>`);
       deck.append(card);
@@ -142,7 +162,7 @@ export function createCoupons({ onChange, onOpen, onClose }) {
   // ---------- 券包 ----------
   function openWallet(note) {
     const items = IDS.map((_, i) => (i < state.opened
-      ? `<button class="wallet-item" type="button" data-i="${i}">${couponHTML(state.order[i], i)}</button>`
+      ? `<button class="wallet-item" type="button" data-i="${i}">${couponHTML(state.order[i])}</button>`
       : '<div class="coupon coupon-locked"><p>还没拆开</p><span>去点房间里的礼物盒</span></div>')).join('');
     const s = openSheet(`
       <button class="sheet-close" type="button" aria-label="关闭">×</button>
@@ -157,7 +177,7 @@ export function createCoupons({ onChange, onOpen, onClose }) {
   // 单独显示一张，画面干净，方便截图
   function showOne(i) {
     const s = openSheet(`
-      <div class="single">${couponHTML(state.order[i], i)}</div>
+      <div class="single">${couponHTML(state.order[i])}</div>
       <button class="btn btn-soft single-back" type="button">回到券包</button>`);
     s.querySelector('.single-back').addEventListener('click', () => openWallet());
   }
@@ -166,6 +186,7 @@ export function createCoupons({ onChange, onOpen, onClose }) {
     openGift,
     openWallet: () => openWallet(),
     close,
+    writeHash: () => writeHash(state),
     get opened() { return state.opened; },
     get total() { return IDS.length; },
     get isOpen() { return !!sheet; },

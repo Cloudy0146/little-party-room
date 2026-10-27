@@ -4,7 +4,7 @@
   --sheet-bg: #FCE9EB;
   /* 所有券一样高：按字最多的"头像券"（3 行）量出来的，宽度变化不影响（断行是固定的） */
   --coupon-w: min(86vw, 330px);
-  --coupon-h: 268px;
+  --coupon-h: 250px;
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -153,15 +153,8 @@
   border-radius: 14px 14px 0 0;
   background: radial-gradient(circle at 50% 0, var(--tint), #FFFBF7 70%);
 }
-.coupon-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  letter-spacing: .08em;
-  color: var(--ink-soft);
-}
 .coupon-icon { width: 46px; height: 46px; margin: auto auto 2px; padding-top: 4px; box-sizing: content-box; color: var(--accent); }
-/* 字少的券：编号留在顶上，图标到正文这一块在剩下的空间里上下居中 */
+/* 字少的券：图标到正文这一块上下居中 */
 .coupon-main > p { margin-bottom: auto; }
 .coupon-icon svg { display: block; width: 100%; height: 100%; }
 .coupon h3 {

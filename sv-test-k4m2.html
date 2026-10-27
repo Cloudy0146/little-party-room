@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Scene Viewer 测试</title>
+  <style>
+    body { margin: 0; padding: 24px 18px; font: 16px/1.5 system-ui, sans-serif; color: #5a3a44; background: #fdf1f2; }
+    h1 { margin: 0 0 6px; font-size: 20px; }
+    p { margin: 0 0 16px; font-size: 14px; color: #8a6470; }
+    button { display: block; width: 100%; margin: 0 0 12px; padding: 14px; border: 0; border-radius: 14px; background: #eba3b3; color: #fff; font: 600 16px system-ui, sans-serif; }
+    button.alt { background: #fff; color: #c9707f; }
+    #result { min-height: 1.5em; padding: 10px 12px; border-radius: 10px; background: #fff; font-size: 14px; }
+    code { display: block; margin-top: 18px; font-size: 11px; word-break: break-all; color: #a08690; }
+  </style>
+</head>
+<body>
+  <!-- 排查 Scene Viewer 用，不从网站任何地方链接 -->
+  <h1>Scene Viewer 测试</h1>
+  <p>两个按钮用同一套打开方式（和网站完全一样），只差模型文件。牛油果正常、蛋糕崩溃 → 蛋糕文件的问题；两个都崩溃 → Google 应用的问题。</p>
+  <button data-model="avocado">1. Google 文档的牛油果示例</button>
+  <button data-model="cake">2. 我们的蛋糕 cake.glb</button>
+  <button class="alt" data-model="cake3d">3. 蛋糕，只看 3D（不进 AR）</button>
+  <div id="result">还没测试</div>
+  <code id="ua"></code>
+  <script type="module" src="./src/sv-test.js"></script>
+</body>
+</html>

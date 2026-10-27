@@ -424,6 +424,7 @@ export function startRoom(el) {
   window.addEventListener('hashchange', () => {
     if (location.hash !== NO_AR_HASH) return;
     history.replaceState(null, '', location.href.split('#')[0]);
+    coupons.writeHash(); // 把券的进度写回网址
     enterSpin();
   });
   wxHint.addEventListener('click', (e) => {
