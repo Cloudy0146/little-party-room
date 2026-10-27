@@ -11,6 +11,7 @@ import { createCoupons } from './ui/coupons.js';
 import { preview } from './clock.js';
 import { arSupport, launchAR, NO_AR_HASH } from './ar.js';
 import { createMusic } from './music.js';
+import { NOTE_ICON, TICKET_ICON } from './ui/icons.js';
 
 // 镜头限制：只能在房间正面小范围转动，永远看不到墙后和地板下
 const AZIMUTH = MathUtils.degToRad(45);
@@ -25,9 +26,6 @@ const SPIN_POLAR_MAX = MathUtils.degToRad(82);
 const TARGET = new Vector3(-0.1, 0.75, -0.1);
 const DISTANCE = 12;
 const BALLOON_REGROW = 3.5;
-
-const NOTE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6.2l10-2.2v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="2.9" ry="2.3" fill="currentColor"/><ellipse cx="16.6" cy="15.2" rx="2.9" ry="2.3" fill="currentColor"/><path class="slash" d="M4 4l16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-const TICKET_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.2a2.8 2.8 0 0 0 0 5.6V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.2a2.8 2.8 0 0 0 0-5.6z" fill="currentColor"/><path d="M14 6v12" stroke="#fff" stroke-width="1.6" stroke-dasharray="2 2"/></svg>';
 
 const ease = (k) => 1 - Math.pow(1 - k, 3);
 const easeBack = (k) => 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);

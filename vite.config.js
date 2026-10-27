@@ -28,7 +28,8 @@ export default defineConfig({
   base: './',
   plugins: [arSave],
   build: {
-    target: 'safari15',
+    // 3D 要 iOS 15 以上，但入口和 2D 兜底页要让 iOS 14 也能运行
+    target: 'safari14',
     assetsInlineLimit: 0,
   },
 });

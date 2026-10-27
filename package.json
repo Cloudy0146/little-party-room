@@ -8,7 +8,9 @@
     "preview": "vite preview --host",
     "font": "node scripts/build-font.mjs",
     "test:webkit": "node scripts/webkit-flow.mjs",
-    "test:unlock": "node scripts/unlock-check.mjs"
+    "test:unlock": "node scripts/unlock-check.mjs",
+    "test:fallback": "node scripts/fallback-check.mjs",
+    "room-shot": "node scripts/room-shot.mjs"
   },
   "dependencies": {
     "three": "0.186.1"

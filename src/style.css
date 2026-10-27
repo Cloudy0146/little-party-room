@@ -364,3 +364,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
 }
+
+/* "进入"按钮显示较长的提示时，字距收一点，不换行 */
+#enter.btn-long { padding-left: 22px; padding-right: 22px; font-size: 16px; letter-spacing: .04em; white-space: nowrap; }

@@ -9,8 +9,10 @@ const TYPES = {
   '.png': 'image/png', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.usdz': 'model/vnd.usdz+zip',
 };
 
-export async function serveDist(port) {
+// fail(url) 返回 true 时直接断开连接，模拟网络失败
+export async function serveDist(port, fail = () => false) {
   const server = http.createServer((req, res) => {
+    if (fail(req.url)) return req.socket.destroy();
     const url = new URL(req.url, 'http://x');
     const file = path.join(ROOT, decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {

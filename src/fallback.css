@@ -1,0 +1,47 @@
+/* 2D 兜底页：背景用纯色，和截图四周填的颜色一样，看不出接缝 */
+#room.fallback { background: #FCE7E6; overflow-y: auto; }
+
+.fb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: max(64px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+}
+.fb-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #C9707F;
+  text-shadow: 0 2px 0 #fff;
+}
+.fb-room {
+  display: block;
+  width: min(100%, 400px, 52vh);
+  height: auto;
+  margin: 10px 0 18px;
+}
+.fb-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: min(100%, 280px);
+}
+.fb-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: .1em;
+}
+.fb-wallet svg { width: 22px; height: 22px; }
+.fb-wallet b {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #FCE7E6;
+  font-size: 13px;
+  letter-spacing: 0;
+}
