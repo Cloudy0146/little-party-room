@@ -213,9 +213,9 @@ function paintFloor(occluders, renderer) {
   const { cx, w } = WINDOW;
   g.save();
   g.globalCompositeOperation = 'lighter';
-  g.shadowColor = 'rgba(255,214,150,0.7)';
+  g.shadowColor = 'rgba(255,210,140,0.9)';
   g.shadowBlur = 0.05 * (g.canvas.width / W);
-  g.fillStyle = 'rgba(255,214,150,0.7)';
+  g.fillStyle = 'rgba(255,210,140,0.92)';
   const panes = [[cx - w / 2 + 0.03, cx - 0.03], [cx + 0.03, cx + w / 2 - 0.03]];
   for (const [xa, xb] of panes) {
     for (const [za, zb] of [[0.05, 0.42], [0.48, 1.05]]) {

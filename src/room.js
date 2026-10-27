@@ -1,6 +1,6 @@
 import {
   WebGLRenderer, Scene, OrthographicCamera, HemisphereLight, DirectionalLight,
-  PointLight, Raycaster, Vector2, Vector3, Spherical, Clock, NeutralToneMapping, MathUtils,
+  PointLight, Raycaster, Vector2, Vector3, Spherical, Timer, NeutralToneMapping, MathUtils,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildRoom, LAMP, BOUNDS } from './room/scene.js';
@@ -10,6 +10,7 @@ import { createConfetti } from './room/confetti.js';
 import { createCoupons } from './ui/coupons.js';
 import { preview } from './clock.js';
 import { arSupport, launchAR, NO_AR_HASH } from './ar.js';
+import { createMusic } from './music.js';
 
 // 镜头限制：只能在房间正面小范围转动，永远看不到墙后和地板下
 const AZIMUTH = MathUtils.degToRad(45);
@@ -25,6 +26,7 @@ const TARGET = new Vector3(-0.1, 0.75, -0.1);
 const DISTANCE = 12;
 const BALLOON_REGROW = 3.5;
 
+const NOTE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6.2l10-2.2v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="2.9" ry="2.3" fill="currentColor"/><ellipse cx="16.6" cy="15.2" rx="2.9" ry="2.3" fill="currentColor"/><path class="slash" d="M4 4l16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const TICKET_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.2a2.8 2.8 0 0 0 0 5.6V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.2a2.8 2.8 0 0 0 0-5.6z" fill="currentColor"/><path d="M14 6v12" stroke="#fff" stroke-width="1.6" stroke-dasharray="2 2"/></svg>';
 
 const ease = (k) => 1 - Math.pow(1 - k, 3);
@@ -52,6 +54,7 @@ export function startRoom(el) {
       <p class="room-hint">点点看</p>
     </header>
     <button class="room-wallet room-ui btn" type="button">${TICKET_ICON}<span>我的券包</span><b class="room-wallet-count"></b></button>
+    <button class="music-toggle" type="button" aria-pressed="false" aria-label="音乐">${NOTE_ICON}</button>
     <button class="cake-close cake-ui" type="button">‹ 回到房间</button>
     <div class="cake-panel cake-ui">
       <p class="cake-msg"></p>
@@ -266,6 +269,12 @@ export function startRoom(el) {
   updateWallet();
   wallet.addEventListener('click', () => coupons.openWallet());
 
+  // 音乐默认关着，她点了才响
+  const music = createMusic();
+  const musicBtn = $('.music-toggle');
+  musicBtn.hidden = !music.supported; // 没有 Web Audio 的浏览器就不放按钮
+  musicBtn.addEventListener('click', () => musicBtn.setAttribute('aria-pressed', String(music.toggle())));
+
   // ---------- 点击和滑动 ----------
   const raycaster = new Raycaster();
   const pointer = new Vector2();
@@ -286,7 +295,8 @@ export function startRoom(el) {
     const rect = canvas.getBoundingClientRect();
     pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const hit = raycaster.intersectObject(root, true)[0];
+    // 只认实体网格：灯串光晕是 Points，点击判定范围有 1 米大，会挡住后面的气球；光晕 Sprite 也不算
+    const hit = raycaster.intersectObject(root, true).find((h) => h.object.isMesh);
     let o = hit?.object;
     while (o && !o.userData.interactive) o = o.parent;
     if (o) onTap(o.userData.interactive, hit.object);
@@ -460,11 +470,13 @@ export function startRoom(el) {
   });
 
   // ---------- 动画循环 ----------
-  const clock = new Clock();
-  renderer.setAnimationLoop(() => {
-    const raw = clock.getDelta();
+  const timer = new Timer();
+  timer.connect(document); // 切到后台再回来时，不会一下子跳过一大段时间
+  renderer.setAnimationLoop((time) => {
+    timer.update(time);
+    const raw = timer.getDelta();
     const dt = Math.min(raw, 0.05);
-    const t = clock.elapsedTime;
+    const t = timer.getElapsed();
     if (coupons.isOpen) return; // 券的界面盖住房间时不用画，省电
 
     if (shot) {

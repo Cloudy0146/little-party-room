@@ -254,6 +254,29 @@ body {
   cursor: pointer;
 }
 
+/* 音乐开关：右上角，房间和蛋糕画面都在 */
+.music-toggle {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 6px 14px -8px rgba(203, 120, 140, .8);
+  color: #D6A3AE;
+  cursor: pointer;
+  animation: appear .6s 1.2s ease backwards;
+}
+.music-toggle svg { display: block; width: 100%; height: 100%; }
+.music-toggle[aria-pressed="true"] { color: #C9707F; }
+.music-toggle[aria-pressed="true"] .slash { display: none; }
+.music-toggle[aria-pressed="true"] svg { animation: note-bob 1.2s ease-in-out infinite; }
+@keyframes note-bob { 50% { transform: translateY(-2px) rotate(-6deg); } }
+
 .cake-panel {
   position: absolute;
   left: 50%;

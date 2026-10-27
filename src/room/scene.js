@@ -173,23 +173,40 @@ function triangle(w, h, color) {
   return new Mesh(geo, mat(color));
 }
 
-function bunting() {
+// 一串彩旗：points 是绳子经过的点，onLeft 表示挂在左墙（旗子朝 +x），否则挂在右墙（朝 +z）
+function bunting(points, n, w, h, onLeft, colorOffset = 0) {
   const g = new Group();
-  const x = INNER + 0.03;
-  const curve = new CatmullRomCurve3([
-    new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
-  ]);
+  const curve = new CatmullRomCurve3(points);
   g.add(new Mesh(new TubeGeometry(curve, 32, 0.007, 4), mat(C.woodDark)));
   const colors = [0xffb3c6, 0xd6c2ff, 0xffe39a, 0xb9ebc8, 0xffcfae];
-  const n = 9;
   for (let i = 0; i < n; i++) {
     const p = curve.getPoint((i + 0.5) / n);
-    const tri = triangle(0.2, 0.24, colors[i % colors.length]);
-    tri.position.set(p.x + 0.004, p.y, p.z);
-    tri.rotation.y = Math.PI / 2;
+    const tri = triangle(w, h, colors[(i + colorOffset) % colors.length]);
+    // 旗子离绳子中心 4mm，贴在绳子前面
+    if (onLeft) {
+      tri.position.set(p.x + 0.004, p.y, p.z);
+      tri.rotation.y = Math.PI / 2;
+    } else {
+      tri.position.set(p.x, p.y, p.z + 0.004);
+    }
     g.add(tri);
   }
   g.traverse((o) => flag(o, 'noOcclude'));
+  return g;
+}
+
+function buntings() {
+  const x = INNER + 0.03;
+  const z = INNER + 0.03;
+  const left = bunting([
+    new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
+  ], 9, 0.2, 0.24, true);
+  // 右墙：接着左墙那串从墙角拐过来，挂到窗帘旁边为止（台灯在它前面）
+  const right = bunting([
+    new Vector3(-1.38, 1.7, z), new Vector3(-0.98, 1.55, z), new Vector3(-0.6, 1.66, z),
+  ], 5, 0.16, 0.19, false, 4);
+  const g = new Group();
+  g.add(left, right);
   return g;
 }
 
@@ -223,11 +240,34 @@ function plant() {
 }
 
 // 填补前面空地板：坐垫和派对帽
+const CUSHION_LOBES = 6;
+const cushionIndent = (theta) => 1 - 0.045 * (0.5 + 0.5 * Math.cos(CUSHION_LOBES * theta));
+
 function cushion() {
   const g = new Group();
-  const body = ball(1, 0xffc2d1, 24, 14);
+  // 鼓鼓的六瓣坐垫：缝线处往里收一点，每一瓣就鼓起来
+  const geo = new SphereGeometry(1, 48, 16);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const k = cushionIndent(Math.atan2(p.getZ(i), p.getX(i)));
+    p.setX(i, p.getX(i) * k);
+    p.setZ(i, p.getZ(i) * k);
+  }
+  geo.computeVertexNormals();
+  const body = new Mesh(geo, mat(0xffc2d1));
   body.scale.set(0.3, 0.14, 0.3);
   g.add(flag(at(body, 0, 0.14, 0), 'shade'));
+  // 缝线：沿着每一瓣的交界，从中间纽扣画到侧面，离表面 4mm
+  for (let s = 0; s < CUSHION_LOBES; s++) {
+    const theta = (s / CUSHION_LOBES) * Math.PI * 2;
+    const pts = [];
+    for (let j = 0; j <= 8; j++) {
+      const phi = 0.14 + (j / 8) * 1.05;
+      const r = 0.3 * cushionIndent(theta) * Math.sin(phi) + 0.004 * Math.sin(phi);
+      pts.push(new Vector3(Math.cos(theta) * r, 0.14 + 0.14 * Math.cos(phi) + 0.004 * Math.cos(phi), Math.sin(theta) * r));
+    }
+    g.add(flag(new Mesh(new TubeGeometry(new CatmullRomCurve3(pts), 10, 0.0055, 4), mat(0xf2a3b8)), 'noOcclude'));
+  }
   const piping = new Mesh(new TorusGeometry(0.27, 0.03, 8, 40), mat(0xffe0e8));
   piping.rotation.x = -Math.PI / 2;
   g.add(at(piping, 0, 0.12, 0));
@@ -369,7 +409,7 @@ function cakeTable() {
 export function buildRoom() {
   const root = new Group();
   flag(root, 'unit');
-  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), bunting(), lamp(), plant(), cushion(), partyHat());
+  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat());
   const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;
