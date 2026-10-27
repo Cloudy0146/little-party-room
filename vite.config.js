@@ -30,9 +30,5 @@ export default defineConfig({
   build: {
     target: 'safari15',
     assetsInlineLimit: 0,
-    rolldownOptions: {
-      // 第二个页面是排查 Scene Viewer 用的测试页，网站里没有任何链接指向它
-      input: { main: 'index.html', svTest: 'sv-test-k4m2.html' },
-    },
   },
 });

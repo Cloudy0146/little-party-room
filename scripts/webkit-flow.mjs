@@ -4,31 +4,14 @@
 // 注意：这是电脑上的 WebKit，不是真的 iPhone Safari。它能抓到脚本报错、缺字、流程断掉，
 // 但性能、AR Quick Look、静音键这些只能在真手机上看。
 
-import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { webkit, devices } from 'playwright';
+import { serveDist } from './serve-dist.mjs';
 
-const ROOT = path.resolve(import.meta.dirname, '..', 'dist');
 const OUT = path.resolve(process.argv[2] ?? 'webkit-shots');
 const PORT = 4174;
-const TYPES = {
-  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.usdz': 'model/vnd.usdz+zip',
-};
-
-// 只为测试临时起一个静态服务器，服务 dist/
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://x');
-  const file = path.join(ROOT, decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
-  if (!file.startsWith(ROOT) || !fs.existsSync(file)) {
-    res.statusCode = 404;
-    return res.end();
-  }
-  res.setHeader('Content-Type', TYPES[path.extname(file)] ?? 'application/octet-stream');
-  fs.createReadStream(file).pipe(res);
-});
-await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
+const server = await serveDist(PORT);
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await webkit.launch();

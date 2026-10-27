@@ -122,7 +122,12 @@ export function createMusic() {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     ctx.resume();
     on = true;
-    nextStart = ctx.currentTime + 0.15;
+    // 她可能半夜打开：每次开始都从两成音量慢慢升上来，约 4 秒到正常音量，不会一下子很大声
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(VOLUME * 0.2, t);
+    master.gain.setTargetAtTime(VOLUME, t, 1.5);
+    nextStart = t + 0.15;
     tick();
     timer = setInterval(tick, 500);
     return true;

@@ -25,8 +25,7 @@ function collectText() {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      // sv-test.js 是排查用的测试页，用系统字体，不放进子集
-      else if (/\.(js|css|html)$/.test(e.name) && e.name !== 'sv-test.js') files.push(p);
+      else if (/\.(js|css|html)$/.test(e.name)) files.push(p);
     }
   };
   walk(path.join(ROOT, 'src'));
