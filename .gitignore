@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+
+# 讨论笔记含她的所在地、生日等，只留在本地，不进公开仓库
+SPEC.md
