@@ -105,7 +105,7 @@ class Surface {
 const SHADOW = '150,92,104';
 
 // 物件在表面上的柔和接触阴影
-function contactShadows(surf, occluders, distanceOf, rectOf, near) {
+function contactShadows(surf, occluders, distanceOf, rectOf, near, color = SHADOW, strength = 1) {
   for (const o of occluders) {
     if (!o.shade) continue;
     const d = distanceOf(o.box);
@@ -113,8 +113,8 @@ function contactShadows(surf, occluders, distanceOf, rectOf, near) {
     const k = 1 - Math.max(d, 0) / near;
     const [x, y, w, h] = rectOf(o.box);
     const r = Math.min(w, h) * 0.45;
-    surf.soft(surf.a, x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88, r, 0.025 + d * 0.3, `rgba(${SHADOW},${0.38 * k})`);
-    surf.soft(surf.a, x - 0.05, y - 0.05, w + 0.1, h + 0.1, r + 0.05, 0.16 + d * 0.3, `rgba(${SHADOW},${0.14 * k})`);
+    surf.soft(surf.a, x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88, r, 0.025 + d * 0.3, `rgba(${color},${0.38 * k * strength})`);
+    surf.soft(surf.a, x - 0.05, y - 0.05, w + 0.1, h + 0.1, r + 0.05, 0.16 + d * 0.3, `rgba(${color},${0.14 * k * strength})`);
   }
 }
 
@@ -123,8 +123,8 @@ function cornerShade(ctx, x0, y0, x1, y1) {
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   const gr = ctx.createLinearGradient(x0, y0, x1, y1);
-  gr.addColorStop(0, 'rgb(226,192,190)');
-  gr.addColorStop(0.35, 'rgb(242,222,220)');
+  gr.addColorStop(0, 'rgb(238,212,210)');
+  gr.addColorStop(0.35, 'rgb(248,234,232)');
   gr.addColorStop(1, 'rgb(255,255,255)');
   ctx.fillStyle = gr;
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -180,9 +180,23 @@ function paintFloor(occluders, renderer) {
   }
   star(a, rx, rz, 0.1, '#D7C6F1');
 
+  const confetti = ['#FFB3C6', '#D6C2FF', '#FFE39A', '#B9EBC8', '#FFCFAE', '#F6C9D0'];
+  const rc = rand(21);
+  for (let i = 0; i < 90; i++) {
+    const x = 0.2 + rc() * (W - 0.3), z = 1.3 + rc() * (H - 1.4);
+    if (x < 1.6 && z < 1.9) continue; // 主要撒在前面的空地板
+    a.save();
+    a.translate(x, z);
+    a.rotate(rc() * Math.PI);
+    a.fillStyle = confetti[i % confetti.length];
+    if (i % 3) a.fillRect(-0.025, -0.01, 0.05, 0.02);
+    else { a.beginPath(); a.arc(0, 0, 0.016, 0, Math.PI * 2); a.fill(); }
+    a.restore();
+  }
+
   cornerShade(a, 0, 0, 0.55, 0);
   cornerShade(a, 0, 0, 0, 0.55);
-  surf.radial(a, 0, 0, 0.8, '196,150,150', 0.25, 'source-over');
+  surf.radial(a, 0, 0, 0.8, '214,170,170', 0.18, 'source-over');
 
   contactShadows(surf, occluders, (b) => b.min.y - 0.02, (b) => [b.min.x - x0, b.min.z - z0, b.max.x - b.min.x, b.max.z - b.min.z], 0.4);
   // 桌面这类离地较高的物件，在地上留下很淡的一大片影子
@@ -195,7 +209,7 @@ function paintFloor(occluders, renderer) {
   // 发光：台灯照在地上的暖光、窗户投下的光斑
   const g = surf.g;
   const [lx, lz] = surf.toLocal(new Vector3(LAMP.x, 0, LAMP.z));
-  surf.radial(g, lx, lz, 1.1, '255,176,110', 0.32);
+  surf.radial(g, lx, lz, 1.4, '255,176,110', 0.55);
   const { cx, w } = WINDOW;
   g.save();
   g.globalCompositeOperation = 'lighter';
@@ -235,8 +249,8 @@ function star(ctx, x, y, r, color) {
 // ---------- 墙 ----------
 
 function paintWall(side, occluders, renderer) {
-  const y0 = 0.02, y1 = WALL_H - 0.06;
-  const a0 = INNER, a1 = 1.45;
+  const y0 = 0.02, y1 = WALL_H - 0.1;
+  const a0 = INNER, a1 = 1.4;
   // 左墙：画布左边是靠镜头的前缘，右边是墙角；右墙：画布左边是墙角
   const toLocal = side === 'left' ? (p) => [a1 - p.z, y1 - p.y] : (p) => [p.x - a0, y1 - p.y];
   const surf = new Surface(a1 - a0, y1 - y0, 512, toLocal);
@@ -274,7 +288,7 @@ function paintWall(side, occluders, renderer) {
   const rect = side === 'left'
     ? (b) => [a1 - b.max.z, y1 - b.max.y, b.max.z - b.min.z, b.max.y - b.min.y]
     : (b) => [b.min.x - a0, y1 - b.max.y, b.max.x - b.min.x, b.max.y - b.min.y];
-  contactShadows(surf, occluders, dist, rect, 0.6);
+  contactShadows(surf, occluders, dist, rect, 0.6, '236,160,180', 0.55);
 
   // 发光：灯串的光点、台灯照在墙上的光、窗户周围的暖光
   const g = surf.g;
@@ -287,10 +301,10 @@ function paintWall(side, occluders, renderer) {
   const lamp = new Vector3(LAMP.x, LAMP.shadeY, LAMP.z);
   const [lu, lv] = toLocal(lamp);
   const lampDist = side === 'left' ? LAMP.x - INNER : LAMP.z - INNER;
-  surf.radial(g, lu, lv + 0.15, 0.7 + lampDist, '255,184,118', 0.55 * Math.exp(-lampDist * 1.5));
+  surf.radial(g, lu, lv + 0.1, 0.9 + lampDist, '255,184,118', 0.85 * Math.exp(-lampDist * 1.2));
   if (side === 'right') {
     const [wu, wv] = toLocal(new Vector3(WINDOW.cx, WINDOW.cy, INNER));
-    surf.radial(g, wu, wv, 1.3, '255,206,140', 0.22);
+    surf.radial(g, wu, wv, 1.5, '255,206,140', 0.32);
   }
 
   const mesh = surf.mesh(renderer);
@@ -344,31 +358,31 @@ function roomShadow() {
   ctx.shadowBlur = 0.4 * s;
   ctx.shadowOffsetX = 10000;
   ctx.beginPath();
-  ctx.roundRect(size / 2 - 1.62 - 10000 / s, size / 2 - 1.55, 3.3, 3.3, 0.3);
+  ctx.roundRect(size / 2 - 1.85 - 10000 / s, size / 2 - 1.85, 3.5, 3.5, 0.35);
   ctx.fill();
   const mesh = new Mesh(new PlaneGeometry(size, size), new MeshBasicMaterial({ map: texture(c), transparent: true, depthWrite: false }));
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = -0.245;
+  mesh.position.y = -0.385;
   mesh.renderOrder = -1;
   mesh.userData.keep = true;
   return mesh;
 }
 
 function paintSign(mesh) {
-  const c = canvas(256, 136);
+  const c = canvas(256, 120);
   const tex = texture(c);
   const draw = () => {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.fillStyle = '#D9788B';
-    ctx.font = '700 86px PartyRound, "PingFang SC", sans-serif';
+    ctx.font = '700 88px PartyRound, "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('阿呆', 128, 72);
+    ctx.fillText('阿呆', 128, 66);
     tex.needsUpdate = true;
   };
   draw();
-  document.fonts?.load('700 86px PartyRound', '阿呆').then(draw, () => {});
+  document.fonts?.load('700 88px PartyRound', '阿呆').then(draw, () => {});
   mesh.material.map = tex;
   mesh.material.needsUpdate = true;
 }
@@ -398,8 +412,8 @@ export function addPaintedLight(root, occluders, renderer) {
     root.add(s);
     return s;
   };
-  sprite(0xffb46e, 0.55, 1.3, new Vector3(LAMP.x + 0.05, LAMP.shadeY - 0.05, LAMP.z + 0.05));
-  sprite(0xffc98a, 0.16, 2.0, new Vector3(WINDOW.cx, WINDOW.cy, INNER + 0.2));
+  sprite(0xffb062, 0.8, 1.9, new Vector3(LAMP.x + 0.08, LAMP.shadeY - 0.05, LAMP.z + 0.08));
+  sprite(0xffc98a, 0.32, 2.6, new Vector3(WINDOW.cx, WINDOW.cy, INNER + 0.25));
   const flame = root.getObjectByName('flame');
   const flameHalo = new Sprite(new SpriteMaterial({ map: halo, color: 0xffb35c, opacity: 0.8, depthWrite: false, blending: AdditiveBlending }));
   flameHalo.scale.setScalar(0.28);

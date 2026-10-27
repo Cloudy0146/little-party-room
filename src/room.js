@@ -11,13 +11,13 @@ import { preview } from './clock.js';
 // 镜头限制：只能在房间正面小范围转动，永远看不到墙后和地板下
 const AZIMUTH = MathUtils.degToRad(45);
 const AZIMUTH_RANGE = MathUtils.degToRad(28);
-const POLAR = MathUtils.degToRad(57);
-const POLAR_MIN = MathUtils.degToRad(42);
-const POLAR_MAX = MathUtils.degToRad(68);
-const TARGET = new Vector3(0, 0.85, 0);
+const POLAR = MathUtils.degToRad(50);
+const POLAR_MIN = MathUtils.degToRad(38);
+const POLAR_MAX = MathUtils.degToRad(62);
+const TARGET = new Vector3(-0.1, 0.75, -0.1);
 const DISTANCE = 12;
 // 竖屏时画面宽度（米），横屏时画面高度
-const VIEW = 4.6;
+const VIEW = 4.62;
 
 const LABELS = { gifts: '礼物', balloons: '气球', cake: '蛋糕' };
 
@@ -30,14 +30,15 @@ export function startRoom(el) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.toneMapping = NeutralToneMapping;
+  renderer.toneMappingExposure = 1.22; // 高调画面
 
   const scene = new Scene();
   // 天空偏奶油、地面偏粉：物体朝下的面会带一点地板反上来的粉色
-  scene.add(new HemisphereLight(0xfff6ee, 0xf5c4cd, 2.3));
-  const sun = new DirectionalLight(0xfff0dd, 1.4);
+  scene.add(new HemisphereLight(0xfff8f2, 0xf8ccd4, 2.6));
+  const sun = new DirectionalLight(0xfff2e2, 1.3);
   sun.position.set(3, 6, 4);
   scene.add(sun);
-  const lampLight = new PointLight(0xffb878, 1.6, 2.6, 1.2);
+  const lampLight = new PointLight(0xffb070, 3.2, 3.2, 1.1);
   lampLight.position.set(LAMP.x + 0.1, LAMP.shadeY - 0.2, LAMP.z + 0.1);
   scene.add(lampLight);
 
@@ -134,13 +135,14 @@ export function startRoom(el) {
   const clock = new Clock();
   const flame = interactive.cake.getObjectByName('flame');
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const raw = clock.getDelta();
+    const dt = Math.min(raw, 0.05);
     const t = clock.elapsedTime;
 
     if (intro.t < intro.duration) {
-      intro.t += dt;
+      intro.t += raw; // 按真实时间走，手机卡顿时入场也不会拖长
       const k = 1 - Math.pow(1 - Math.min(intro.t / intro.duration, 1), 3);
-      placeCamera(AZIMUTH - 0.35 * (1 - k), POLAR - 0.12 * (1 - k), 0.72 + 0.28 * k);
+      placeCamera(AZIMUTH - 0.35 * (1 - k), POLAR + 0.12 * (1 - k), 0.72 + 0.28 * k);
       if (intro.t >= intro.duration) controls.enabled = true;
     } else {
       controls.update();

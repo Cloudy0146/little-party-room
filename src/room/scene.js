@@ -34,7 +34,7 @@ export const C = {
 export const ROOM = 3;
 export const HALF = ROOM / 2;
 export const WALL_H = 2.2;
-const WALL_T = 0.14;
+const WALL_T = 0.26;
 export const INNER = -HALF + 0.01; // 两面墙内侧表面的位置
 
 const mats = new Map();
@@ -68,10 +68,13 @@ const flag = (obj, ...keys) => {
 
 function shell() {
   const g = new Group();
-  g.add(at(box(ROOM + 0.1, 0.22, ROOM + 0.1, C.pinkDeep, 0.08), 0, -0.13, 0));
+  // 厚厚的白色圆角地台和墙，做出微缩模型的感觉
+  const lo = INNER - WALL_T - 0.05, hi = HALF + 0.06;
+  g.add(at(box(hi - lo, 0.34, hi - lo, C.white, 0.12), (hi + lo) / 2, -0.21, (hi + lo) / 2));
   g.add(at(box(ROOM, 0.06, ROOM, C.wood, 0.02), 0, -0.01, 0));
-  g.add(at(box(WALL_T, WALL_H, ROOM, C.cream, 0.05), INNER - WALL_T / 2, WALL_H / 2, 0));
-  g.add(at(box(ROOM + WALL_T, WALL_H, WALL_T, C.cream, 0.05), -WALL_T / 2, WALL_H / 2, INNER - WALL_T / 2));
+  const wallH = WALL_H + 0.04;
+  g.add(at(box(WALL_T, wallH, HALF - INNER, C.white, 0.1), INNER - WALL_T / 2, wallH / 2 - 0.04, (HALF + INNER) / 2));
+  g.add(at(box(HALF - INNER + WALL_T, wallH, WALL_T, C.white, 0.1), (HALF + INNER - WALL_T) / 2, wallH / 2 - 0.04, INNER - WALL_T / 2));
   g.traverse((o) => flag(o, 'shell'));
 
   // 墙裙上沿的装饰条和踢脚线
@@ -124,7 +127,7 @@ function windowOnRightWall() {
   for (const side of [-1, 1]) {
     g.add(flag(at(curtain(0.28, h + 0.32), cx + side * (w / 2 + 0.12), cy - 0.06, z + 0.11), 'shade'));
     // 窗帘绑带
-    g.add(flag(at(box(0.3, 0.05, 0.08, C.gold, 0.02), cx + side * (w / 2 + 0.12), cy - 0.2, z + 0.15), 'noOcclude'));
+    g.add(flag(at(box(0.3, 0.022, 0.075, C.pinkDeep, 0.01), cx + side * (w / 2 + 0.12), cy - 0.2, z + 0.14), 'noOcclude'));
   }
   g.add(flag(at(cyl(0.015, 0.015, w + 0.75, C.gold, 8), cx, cy + h / 2 + 0.16, z + 0.12), 'noOcclude'));
   g.children.at(-1).rotation.z = Math.PI / 2;
@@ -171,7 +174,7 @@ function bunting() {
     new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
   ]);
   g.add(new Mesh(new TubeGeometry(curve, 32, 0.007, 4), mat(C.woodDark)));
-  const colors = [C.pink, C.lilac, C.gold, C.pinkDeep, C.sage];
+  const colors = [0xffb3c6, 0xd6c2ff, 0xffe39a, 0xb9ebc8, 0xffcfae];
   const n = 9;
   for (let i = 0; i < n; i++) {
     const p = curve.getPoint((i + 0.5) / n);
@@ -190,7 +193,8 @@ function lamp() {
   const g = new Group();
   g.add(flag(at(cyl(0.16, 0.18, 0.05, C.wood), 0, 0.025, 0), 'shade'));
   g.add(flag(at(cyl(0.02, 0.02, 1.25, C.gold, 8), 0, 0.65, 0), 'shade'));
-  g.add(at(cyl(0.15, 0.24, 0.28, 0xfff3dc, 32), 0, LAMP.shadeY, 0));
+  // 灯罩本身发光
+  g.add(flag(at(new Mesh(new CylinderGeometry(0.15, 0.24, 0.28, 32), glow(0xfff0d4)), 0, LAMP.shadeY, 0), 'shade'));
   g.add(at(cyl(0.155, 0.155, 0.03, C.pink, 32), 0, LAMP.shadeY + 0.14, 0));
   g.add(at(cyl(0.245, 0.245, 0.03, C.pink, 32), 0, LAMP.shadeY - 0.14, 0));
   g.position.set(LAMP.x, 0.02, LAMP.z);
@@ -208,17 +212,28 @@ function plant() {
   return g;
 }
 
-function shelf() {
-  // 左墙上的小置物板：一个小相框（不放照片）、一颗金色小球、一个小花瓶
+// 填补前面空地板：坐垫和派对帽
+function cushion() {
   const g = new Group();
-  const x = INNER + 0.11;
-  g.add(flag(at(box(0.2, 0.04, 0.62, C.wood, 0.015), x, 1.0, -0.55), 'shade'));
-  const frame = at(box(0.03, 0.24, 0.19, C.lilac, 0.03), x - 0.04, 1.14, -0.72);
-  frame.rotation.z = 0.12;
-  g.add(frame);
-  g.add(at(box(0.01, 0.17, 0.12, C.cream, 0.01), x - 0.02, 1.14, -0.72));
-  g.add(at(ball(0.065, C.gold), x, 1.085, -0.5));
-  g.add(at(cyl(0.035, 0.05, 0.13, C.pink, 16), x, 1.085, -0.33));
+  const body = ball(1, 0xffc2d1, 24, 14);
+  body.scale.set(0.3, 0.14, 0.3);
+  g.add(flag(at(body, 0, 0.14, 0), 'shade'));
+  const piping = new Mesh(new TorusGeometry(0.27, 0.03, 8, 40), mat(0xffe0e8));
+  piping.rotation.x = -Math.PI / 2;
+  g.add(at(piping, 0, 0.12, 0));
+  g.add(at(ball(0.035, C.white, 10, 8), 0, 0.275, 0));
+  g.position.set(1.0, 0.02, 0.95);
+  return g;
+}
+
+function partyHat() {
+  const g = new Group();
+  g.add(flag(new Mesh(new ConeGeometry(0.1, 0.24, 20), mat(0xffb3c6)), 'shade'));
+  g.add(at(cyl(0.101, 0.101, 0.03, C.white, 20), 0, -0.09, 0));
+  g.add(at(cyl(0.065, 0.065, 0.025, C.white, 20), 0, -0.01, 0));
+  g.add(at(ball(0.04, C.gold, 10, 8), 0, 0.13, 0));
+  g.rotation.z = 0.5;
+  g.position.set(0.52, 0.1, 1.28);
   return g;
 }
 
@@ -249,8 +264,8 @@ function gifts() {
   const top = make(0.28, 0.22, 0.28, C.sage, C.cream, 0, 0, -0.2);
   top.position.y = 0.45;
   g.add(top);
-  g.position.set(-0.6, 0, 0.95);
-  g.scale.setScalar(1.15);
+  g.position.set(-0.42, 0, 0.72);
+  g.scale.setScalar(1.35);
   return g;
 }
 
@@ -314,29 +329,29 @@ function cakeTable() {
   flame.name = 'flame';
   cake.add(flag(flame, 'keep', 'noOcclude'));
 
-  // 小牌子：朝向镜头，"阿呆"两个字由 paint.js 画上去
+  // 插在蛋糕上的牌子，比蜡烛高，放在蜡烛后面；"阿呆"两个字由 paint.js 画上去
   const sign = new Group();
-  sign.add(at(box(0.19, 0.105, 0.012, C.white, 0.014), 0, 0.07, 0));
-  sign.add(at(cyl(0.004, 0.004, 0.12, C.gold, 6), 0, 0, -0.008));
-  const label = new Mesh(new PlaneGeometry(0.18, 0.096), new MeshBasicMaterial({ transparent: true }));
+  sign.add(at(box(0.34, 0.16, 0.014, C.white, 0.03), 0, 0.6, 0));
+  for (const s of [-1, 1]) sign.add(at(cyl(0.005, 0.005, 0.36, C.gold, 6), s * 0.12, 0.43, -0.01));
+  const label = new Mesh(new PlaneGeometry(0.32, 0.15), new MeshBasicMaterial({ transparent: true }));
   label.name = 'signLabel';
-  sign.add(flag(at(label, 0, 0.07, 0.0075), 'keep', 'noOcclude'));
-  sign.position.set(0.1, 0.27, 0.1);
+  sign.add(flag(at(label, 0, 0.6, 0.0085), 'keep'));
+  sign.position.set(-0.05, 0, -0.05);
   sign.rotation.y = Math.PI / 4;
   sign.traverse((o) => flag(o, 'noOcclude'));
   cake.add(sign);
 
   cake.position.y = 0.65;
   g.add(cake);
-  g.position.set(0.72, 0.02, -0.3);
-  g.scale.setScalar(1.25);
+  g.position.set(0.55, 0.02, -0.15);
+  g.scale.setScalar(1.5);
   return g;
 }
 
 export function buildRoom() {
   const root = new Group();
   flag(root, 'unit');
-  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), bunting(), shelf(), lamp(), plant());
+  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), bunting(), lamp(), plant(), cushion(), partyHat());
   const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;
