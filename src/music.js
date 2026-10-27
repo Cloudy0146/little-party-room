@@ -1,12 +1,13 @@
 // 八音盒版《Happy Birthday》：不用音频文件，全部用 Web Audio 现场合成。
-// 默认不响，只有她点了音乐按钮才开始；再点一下就停。
+// 她点"进入"时开始放（用这一下点击满足浏览器的自动播放限制），右上角按钮可以关掉。
+// 尊重静音键：手机开着静音时不出声。
 //
 // 每个音 = 一个正弦波基音 + 两个很快消失的高泛音（八音盒簧片"叮"的那一下），
 // 再加一点短回声，听起来像在小盒子里。
 
 const BEAT = 0.6; // 每拍秒数（约 100 bpm）
 const GAP = 2.5; // 每遍之间停一下
-const VOLUME = 0.22;
+const VOLUME = 0.32;
 
 // 旋律（F 大调，MIDI 音高, 拍数）。第一小节是弱起的两个音
 const MELODY = [
@@ -118,8 +119,8 @@ export function createMusic() {
 
   function start() {
     if (!ctx && !setup()) return false;
-    // iOS 16.4 以后：她自己点了才响，所以静音键开着也照样放（和看视频一样）
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    // iOS 16.4 以后：ambient = 跟着静音键走，静音时不出声，也不会打断她手机上正在放的音乐
+    try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch {}
     ctx.resume();
     on = true;
     // 她可能半夜打开：每次开始都从两成音量慢慢升上来，约 4 秒到正常音量，不会一下子很大声
@@ -141,7 +142,6 @@ export function createMusic() {
       setTimeout(() => g.disconnect(), 400);
     }
     passes = [];
-    try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch {}
   }
 
   return {
@@ -150,6 +150,7 @@ export function createMusic() {
       else start();
       return on;
     },
+    start: () => on || start(),
     get on() { return on; },
     supported: !!(window.AudioContext || window.webkitAudioContext),
   };

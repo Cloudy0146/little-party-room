@@ -1,5 +1,6 @@
 import { UNLOCK_AT, now, isUnlocked, fakeVisits } from './clock.js';
 import { recordVisit, quipFor } from './visits.js';
+import { createMusic } from './music.js';
 
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, '0');
@@ -50,7 +51,11 @@ function showEntrance() {
   loadRoom();
 }
 
+// 音乐要在点击的同一刻开始，浏览器才允许出声，所以在等 3D 房间下载之前就先开
+const music = createMusic();
+
 async function enterRoom() {
+  music.start();
   const entrance = $('entrance');
   let mod;
   try {
@@ -61,7 +66,7 @@ async function enterRoom() {
   }
   entrance.classList.add('leaving');
   entrance.addEventListener('animationend', () => (entrance.hidden = true), { once: true });
-  mod.startRoom($('room'));
+  mod.startRoom($('room'), music);
 }
 
 if (isUnlocked()) showEntrance();

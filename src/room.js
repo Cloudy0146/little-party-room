@@ -38,7 +38,7 @@ function corners(x0, x1, y0, y1, z0, z1) {
   return pts;
 }
 
-export function startRoom(el) {
+export function startRoom(el, music = createMusic()) {
   el.hidden = false;
   const ar = arSupport();
   // 这台设备本来就没有 AR（例如电脑）：按钮直接写成看 3D 蛋糕，不假装能放到桌上
@@ -269,10 +269,10 @@ export function startRoom(el) {
   updateWallet();
   wallet.addEventListener('click', () => coupons.openWallet());
 
-  // 音乐默认关着，她点了才响
-  const music = createMusic();
+  // 音乐在点"进入"时已经开始（main.js），这里的按钮可以关掉、再打开
   const musicBtn = $('.music-toggle');
   musicBtn.hidden = !music.supported; // 没有 Web Audio 的浏览器就不放按钮
+  musicBtn.setAttribute('aria-pressed', String(music.on));
   musicBtn.addEventListener('click', () => musicBtn.setAttribute('aria-pressed', String(music.toggle())));
 
   // ---------- 点击和滑动 ----------
