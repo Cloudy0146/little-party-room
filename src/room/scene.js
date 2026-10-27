@@ -1,9 +1,19 @@
 // 房间里的所有物件，全部用代码生成。
 // 单位是米：房间 3×3，墙高 2.2。左墙在 x=-1.5，右墙在 z=-1.5，镜头永远在 +x/+z 这一侧。
+//
+// 这里只负责"摆什么、什么颜色"。之后 bake.js 会算顶点 AO 并合并网格，
+// paint.js 会给地板和墙画上阴影和光。
+//
+// userData 标记：
+//   unit      合并成一个网格的单位（可互动的物件、每个气球）
+//   keep      不参与合并（会单独动的，或有贴图的）
+//   shell     房间结构（墙、地板），不算遮挡物，也不算顶点 AO
+//   noOcclude 太细太薄，不算遮挡物
+//   shade     会在地板和墙上投下柔和的接触阴影
 import {
   Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, CylinderGeometry, SphereGeometry,
-  ConeGeometry, BufferGeometry, Float32BufferAttribute, CatmullRomCurve3, TubeGeometry,
-  Vector3, DoubleSide,
+  ConeGeometry, BoxGeometry, TorusGeometry, BufferGeometry, Float32BufferAttribute,
+  CatmullRomCurve3, TubeGeometry, Vector3, PlaneGeometry,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -11,7 +21,6 @@ export const C = {
   pink: 0xf6c9d0,
   pinkDeep: 0xeba3b3,
   cream: 0xfff4e8,
-  wallLeft: 0xfdeee3,
   lilac: 0xcdb8e8,
   wood: 0xe8c49a,
   woodDark: 0xd9ad7e,
@@ -19,34 +28,41 @@ export const C = {
   sageDark: 0x86b585,
   gold: 0xe8b860,
   warm: 0xffd9a0,
-  white: 0xffffff,
+  white: 0xfffaf5,
 };
 
-const ROOM = 3;
-const HALF = ROOM / 2;
-const WALL_H = 2.2;
+export const ROOM = 3;
+export const HALF = ROOM / 2;
+export const WALL_H = 2.2;
 const WALL_T = 0.14;
+export const INNER = -HALF + 0.01; // 两面墙内侧表面的位置
 
 const mats = new Map();
 const mat = (color) => {
   if (!mats.has(color)) mats.set(color, new MeshLambertMaterial({ color }));
   return mats.get(color);
 };
-const glow = (color) => new MeshBasicMaterial({ color });
+const glowMats = new Map();
+const glow = (color) => {
+  if (!glowMats.has(color)) glowMats.set(color, new MeshBasicMaterial({ color }));
+  return glowMats.get(color);
+};
 
 function box(w, h, d, color, r = 0.04) {
   const geo = new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2) * 0.999);
   return new Mesh(geo, mat(color));
 }
-
-function cyl(rTop, rBottom, h, color, seg = 24) {
-  return new Mesh(new CylinderGeometry(rTop, rBottom, h, seg), mat(color));
-}
+const cyl = (rTop, rBottom, h, color, seg = 24) => new Mesh(new CylinderGeometry(rTop, rBottom, h, seg), mat(color));
+const ball = (r, color, w = 16, h = 12) => new Mesh(new SphereGeometry(r, w, h), mat(color));
 
 function at(obj, x, y, z) {
   obj.position.set(x, y, z);
   return obj;
 }
+const flag = (obj, ...keys) => {
+  for (const k of keys) obj.userData[k] = true;
+  return obj;
+};
 
 // ---------- 结构：底座、地板、两面墙 ----------
 
@@ -54,78 +70,88 @@ function shell() {
   const g = new Group();
   g.add(at(box(ROOM + 0.1, 0.22, ROOM + 0.1, C.pinkDeep, 0.08), 0, -0.13, 0));
   g.add(at(box(ROOM, 0.06, ROOM, C.wood, 0.02), 0, -0.01, 0));
-  g.add(at(box(WALL_T, WALL_H, ROOM, C.wallLeft, 0.05), -HALF - WALL_T / 2 + 0.01, WALL_H / 2, 0));
-  g.add(at(box(ROOM + WALL_T, WALL_H, WALL_T, C.cream, 0.05), -WALL_T / 2, WALL_H / 2, -HALF - WALL_T / 2 + 0.01));
-  // 踢脚线
-  g.add(at(box(0.04, 0.1, ROOM, C.pink, 0.015), -HALF + 0.02, 0.07, 0));
-  g.add(at(box(ROOM, 0.1, 0.04, C.pink, 0.015), 0, 0.07, -HALF + 0.02));
+  g.add(at(box(WALL_T, WALL_H, ROOM, C.cream, 0.05), INNER - WALL_T / 2, WALL_H / 2, 0));
+  g.add(at(box(ROOM + WALL_T, WALL_H, WALL_T, C.cream, 0.05), -WALL_T / 2, WALL_H / 2, INNER - WALL_T / 2));
+  g.traverse((o) => flag(o, 'shell'));
+
+  // 墙裙上沿的装饰条和踢脚线
+  const trims = new Group();
+  trims.add(at(box(0.035, 0.05, ROOM - 0.02, C.white, 0.015), INNER + 0.015, 0.8, 0));
+  trims.add(at(box(ROOM - 0.02, 0.05, 0.035, C.white, 0.015), 0, 0.8, INNER + 0.015));
+  trims.add(at(box(0.03, 0.09, ROOM - 0.02, C.pinkDeep, 0.012), INNER + 0.012, 0.065, 0));
+  trims.add(at(box(ROOM - 0.02, 0.09, 0.03, C.pinkDeep, 0.012), 0, 0.065, INNER + 0.012));
+  trims.traverse((o) => flag(o, 'noOcclude'));
+  g.add(trims);
   return g;
 }
 
 // ---------- 装饰 ----------
 
-function rug() {
-  const g = new Group();
-  g.add(at(cyl(1.0, 1.0, 0.03, C.lilac, 48), 0.15, 0.035, 0.2));
-  g.add(at(cyl(0.72, 0.72, 0.035, 0xdccdf0, 48), 0.15, 0.04, 0.2));
-  return g;
+export const RUG = { x: 0.15, z: 0.2, r: 1.0 };
+
+function rugEdge() {
+  // 地毯本体画在地板贴图上，这里只做一圈软软的边，让它有厚度
+  const ring = new Mesh(new TorusGeometry(RUG.r, 0.028, 6, 64), mat(0xc2aae2));
+  ring.rotation.x = -Math.PI / 2;
+  ring.scale.z = 0.6;
+  return flag(at(ring, RUG.x, 0.03, RUG.z), 'noOcclude');
+}
+
+export const WINDOW = { cx: 0.35, cy: 1.3, w: 1.0, h: 0.95 };
+
+function curtain(w, h) {
+  const geo = new BoxGeometry(w, h, 0.05, 12, 1, 1);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    p.setZ(i, p.getZ(i) + Math.sin((x / w) * Math.PI * 4) * 0.022);
+  }
+  geo.computeVertexNormals();
+  return new Mesh(geo, mat(C.pink));
 }
 
 function windowOnRightWall() {
   const g = new Group();
-  const z = -HALF + 0.02;
-  const cx = 0.35, cy = 1.3, w = 1.0, h = 0.95;
+  const { cx, cy, w, h } = WINDOW;
+  const z = INNER;
   g.add(at(box(w + 0.12, h + 0.12, 0.06, C.white, 0.04), cx, cy, z));
-  const glass = new Mesh(new RoundedBoxGeometry(w, h, 0.02, 2, 0.03), glow(C.warm));
-  g.add(at(glass, cx, cy, z + 0.03));
-  g.add(at(box(0.04, h, 0.03, C.white, 0.01), cx, cy, z + 0.05));
-  g.add(at(box(w, 0.04, 0.03, C.white, 0.01), cx, cy + 0.08, z + 0.05));
-  g.add(at(box(w + 0.3, 0.06, 0.12, C.white, 0.03), cx, cy - h / 2 - 0.08, z + 0.06)); // 窗台
-  // 窗帘
+  const glass = new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ color: C.warm }));
+  glass.name = 'glass';
+  g.add(flag(at(glass, cx, cy, z + 0.032), 'keep', 'noOcclude'));
+  g.add(flag(at(box(0.04, h, 0.03, C.white, 0.012), cx, cy, z + 0.05), 'noOcclude'));
+  g.add(flag(at(box(w, 0.04, 0.03, C.white, 0.012), cx, cy + 0.08, z + 0.05), 'noOcclude'));
+  g.add(flag(at(box(w + 0.3, 0.06, 0.12, C.white, 0.03), cx, cy - h / 2 - 0.08, z + 0.06), 'shade'));
   for (const side of [-1, 1]) {
-    g.add(at(box(0.26, h + 0.3, 0.08, C.pink, 0.06), cx + side * (w / 2 + 0.1), cy - 0.05, z + 0.1));
+    g.add(flag(at(curtain(0.28, h + 0.32), cx + side * (w / 2 + 0.12), cy - 0.06, z + 0.11), 'shade'));
+    // 窗帘绑带
+    g.add(flag(at(box(0.3, 0.05, 0.08, C.gold, 0.02), cx + side * (w / 2 + 0.12), cy - 0.2, z + 0.15), 'noOcclude'));
   }
-  g.add(at(box(w + 0.7, 0.04, 0.04, C.gold, 0.02), cx, cy + h / 2 + 0.16, z + 0.1)); // 窗帘杆
+  g.add(flag(at(cyl(0.015, 0.015, w + 0.75, C.gold, 8), cx, cy + h / 2 + 0.16, z + 0.12), 'noOcclude'));
+  g.children.at(-1).rotation.z = Math.PI / 2;
   return g;
 }
+
+export const BULBS = [];
 
 function stringLights() {
   const g = new Group();
-  const pts = [
-    new Vector3(-HALF + 0.05, WALL_H - 0.12, HALF - 0.1),
-    new Vector3(-HALF + 0.05, WALL_H - 0.4, 0.3),
-    new Vector3(-HALF + 0.05, WALL_H - 0.18, -0.6),
-    new Vector3(-HALF + 0.08, WALL_H - 0.14, -HALF + 0.08),
-    new Vector3(-0.4, WALL_H - 0.36, -HALF + 0.05),
-    new Vector3(0.6, WALL_H - 0.16, -HALF + 0.05),
-    new Vector3(HALF - 0.1, WALL_H - 0.34, -HALF + 0.05),
-  ];
-  const curve = new CatmullRomCurve3(pts);
-  g.add(new Mesh(new TubeGeometry(curve, 64, 0.008, 4), mat(C.woodDark)));
-  const bulb = new SphereGeometry(0.035, 10, 8);
-  const bulbMat = glow(0xffe6b0);
+  const y = WALL_H;
+  const curve = new CatmullRomCurve3([
+    new Vector3(INNER + 0.03, y - 0.12, HALF - 0.1),
+    new Vector3(INNER + 0.03, y - 0.4, 0.4),
+    new Vector3(INNER + 0.03, y - 0.16, -0.5),
+    new Vector3(INNER + 0.06, y - 0.12, INNER + 0.06),
+    new Vector3(-0.5, y - 0.38, INNER + 0.03),
+    new Vector3(0.5, y - 0.14, INNER + 0.03),
+    new Vector3(HALF - 0.1, y - 0.34, INNER + 0.03),
+  ]);
+  g.add(flag(new Mesh(new TubeGeometry(curve, 64, 0.008, 4), mat(C.woodDark)), 'noOcclude'));
+  const bulb = new SphereGeometry(0.032, 10, 8);
   for (let i = 0; i <= 22; i++) {
     const p = curve.getPoint(i / 22);
-    g.add(at(new Mesh(bulb, bulbMat), p.x, p.y - 0.04, p.z));
-  }
-  return g;
-}
-
-function bunting() {
-  const g = new Group();
-  const x = -HALF + 0.04;
-  const curve = new CatmullRomCurve3([
-    new Vector3(x, 1.55, 1.2), new Vector3(x, 1.35, 0.4), new Vector3(x, 1.5, -0.4), new Vector3(x, 1.7, -1.25),
-  ]);
-  g.add(new Mesh(new TubeGeometry(curve, 32, 0.007, 4), mat(C.woodDark)));
-  const colors = [C.pink, C.lilac, C.gold, C.pinkDeep, C.sage];
-  const n = 9;
-  for (let i = 0; i < n; i++) {
-    const p = curve.getPoint((i + 0.5) / n);
-    const tri = triangle(0.2, 0.24, colors[i % colors.length]);
-    tri.position.set(p.x + 0.005, p.y, p.z);
-    tri.rotation.y = Math.PI / 2;
-    g.add(tri);
+    p.y -= 0.04;
+    BULBS.push(p.clone());
+    g.add(flag(at(new Mesh(bulb, glow(0xfff0c8)), p.x, p.y, p.z), 'noOcclude'));
   }
   return g;
 }
@@ -133,42 +159,66 @@ function bunting() {
 function triangle(w, h, color) {
   const geo = new BufferGeometry();
   geo.setAttribute('position', new Float32BufferAttribute([-w / 2, 0, 0, w / 2, 0, 0, 0, -h, 0], 3));
+  geo.setIndex([0, 2, 1]);
   geo.computeVertexNormals();
-  const m = new MeshLambertMaterial({ color, side: DoubleSide });
-  return new Mesh(geo, m);
+  return new Mesh(geo, mat(color));
 }
+
+function bunting() {
+  const g = new Group();
+  const x = INNER + 0.03;
+  const curve = new CatmullRomCurve3([
+    new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
+  ]);
+  g.add(new Mesh(new TubeGeometry(curve, 32, 0.007, 4), mat(C.woodDark)));
+  const colors = [C.pink, C.lilac, C.gold, C.pinkDeep, C.sage];
+  const n = 9;
+  for (let i = 0; i < n; i++) {
+    const p = curve.getPoint((i + 0.5) / n);
+    const tri = triangle(0.2, 0.24, colors[i % colors.length]);
+    tri.position.set(p.x + 0.004, p.y, p.z);
+    tri.rotation.y = Math.PI / 2;
+    g.add(tri);
+  }
+  g.traverse((o) => flag(o, 'noOcclude'));
+  return g;
+}
+
+export const LAMP = { x: -0.72, z: -1.15, shadeY: 1.38 };
 
 function lamp() {
   const g = new Group();
-  g.add(at(cyl(0.16, 0.18, 0.04, C.wood), 0, 0.02, 0));
-  g.add(at(cyl(0.02, 0.02, 1.25, C.gold, 8), 0, 0.65, 0));
-  const shade = new Mesh(new CylinderGeometry(0.15, 0.24, 0.26, 24, 1, true), new MeshLambertMaterial({ color: C.cream, side: DoubleSide, emissive: 0xffd9a0, emissiveIntensity: 0.55 }));
-  g.add(at(shade, 0, 1.36, 0));
-  g.add(at(new Mesh(new SphereGeometry(0.06, 12, 8), glow(0xfff0d0)), 0, 1.3, 0));
-  g.position.set(-0.72, 0.02, -1.15);
-  g.name = 'lamp';
+  g.add(flag(at(cyl(0.16, 0.18, 0.05, C.wood), 0, 0.025, 0), 'shade'));
+  g.add(flag(at(cyl(0.02, 0.02, 1.25, C.gold, 8), 0, 0.65, 0), 'shade'));
+  g.add(at(cyl(0.15, 0.24, 0.28, 0xfff3dc, 32), 0, LAMP.shadeY, 0));
+  g.add(at(cyl(0.155, 0.155, 0.03, C.pink, 32), 0, LAMP.shadeY + 0.14, 0));
+  g.add(at(cyl(0.245, 0.245, 0.03, C.pink, 32), 0, LAMP.shadeY - 0.14, 0));
+  g.position.set(LAMP.x, 0.02, LAMP.z);
   return g;
 }
 
 function plant() {
   const g = new Group();
-  g.add(at(cyl(0.16, 0.12, 0.3, C.pinkDeep), 0, 0.15, 0));
-  g.add(at(cyl(0.15, 0.15, 0.02, 0x9b7a5c), 0, 0.3, 0));
-  const leaves = [[0, 0.5, 0, 0.17], [0.1, 0.62, 0.05, 0.13], [-0.09, 0.66, -0.03, 0.12], [0.02, 0.78, 0, 0.1]];
-  leaves.forEach(([x, y, z, r], i) => {
-    g.add(at(new Mesh(new SphereGeometry(r, 14, 10), mat(i % 2 ? C.sageDark : C.sage)), x, y, z));
-  });
-  g.position.set(1.2, 0.02, -1.15);
+  g.add(flag(at(cyl(0.17, 0.13, 0.32, C.pinkDeep), 0, 0.16, 0), 'shade'));
+  g.add(at(cyl(0.175, 0.175, 0.04, C.pink), 0, 0.32, 0));
+  g.add(at(cyl(0.15, 0.15, 0.02, 0x9b7a5c), 0, 0.33, 0));
+  const leaves = [[0, 0.52, 0, 0.18], [0.11, 0.64, 0.05, 0.14], [-0.1, 0.68, -0.03, 0.13], [0.02, 0.82, 0, 0.11], [-0.06, 0.55, 0.1, 0.12]];
+  leaves.forEach(([x, y, z, r], i) => g.add(at(ball(r, i % 2 ? C.sageDark : C.sage), x, y, z)));
+  g.position.set(1.15, 0.02, -1.12);
   return g;
 }
 
 function shelf() {
-  // 左墙上的小置物板，放一个小相框形状（不放照片）和一颗星星
+  // 左墙上的小置物板：一个小相框（不放照片）、一颗金色小球、一个小花瓶
   const g = new Group();
-  const x = -HALF + 0.12;
-  g.add(at(box(0.22, 0.04, 0.6, C.wood, 0.015), x, 1.0, -0.55));
-  g.add(at(box(0.04, 0.22, 0.18, C.lilac, 0.03), x - 0.05, 1.13, -0.7));
-  g.add(at(new Mesh(new SphereGeometry(0.07, 12, 10), mat(C.gold)), x, 1.09, -0.4));
+  const x = INNER + 0.11;
+  g.add(flag(at(box(0.2, 0.04, 0.62, C.wood, 0.015), x, 1.0, -0.55), 'shade'));
+  const frame = at(box(0.03, 0.24, 0.19, C.lilac, 0.03), x - 0.04, 1.14, -0.72);
+  frame.rotation.z = 0.12;
+  g.add(frame);
+  g.add(at(box(0.01, 0.17, 0.12, C.cream, 0.01), x - 0.02, 1.14, -0.72));
+  g.add(at(ball(0.065, C.gold), x, 1.085, -0.5));
+  g.add(at(cyl(0.035, 0.05, 0.13, C.pink, 16), x, 1.085, -0.33));
   return g;
 }
 
@@ -178,107 +228,122 @@ function gifts() {
   const g = new Group();
   const make = (w, h, d, color, ribbon, x, z, ry) => {
     const b = new Group();
-    b.add(at(box(w, h, d, color, 0.05), 0, h / 2, 0));
-    b.add(at(box(w + 0.01, h + 0.01, 0.05, ribbon, 0.01), 0, h / 2, 0));
-    b.add(at(box(0.05, h + 0.01, d + 0.01, ribbon, 0.01), 0, h / 2, 0));
+    b.add(flag(at(box(w, h, d, color, 0.06), 0, h / 2, 0), 'shade'));
+    b.add(at(box(w + 0.012, h + 0.012, 0.055, ribbon, 0.015), 0, h / 2, 0));
+    b.add(at(box(0.055, h + 0.012, d + 0.012, ribbon, 0.015), 0, h / 2, 0));
     for (const s of [-1, 1]) {
-      const loop = new Mesh(new SphereGeometry(0.06, 10, 8), mat(ribbon));
-      loop.scale.set(1.2, 0.7, 0.6);
-      loop.position.set(s * 0.06, h + 0.04, 0);
+      const loop = ball(0.065, ribbon, 12, 8);
+      loop.scale.set(1.25, 0.7, 0.6);
+      loop.rotation.z = s * 0.35;
+      loop.position.set(s * 0.065, h + 0.04, 0);
       b.add(loop);
     }
+    b.add(at(ball(0.03, ribbon, 10, 8), 0, h + 0.03, 0));
     b.position.set(x, 0.02, z);
     b.rotation.y = ry;
     return b;
   };
   g.add(make(0.5, 0.42, 0.5, C.pinkDeep, C.gold, 0, 0, 0.2));
-  g.add(make(0.36, 0.3, 0.36, C.lilac, C.white, 0.38, 0.28, -0.3));
-  g.add(make(0.3, 0.24, 0.3, C.cream, C.pinkDeep, -0.22, 0.38, 0.5));
+  g.add(make(0.36, 0.3, 0.36, C.lilac, C.white, 0.4, 0.28, -0.3));
+  g.add(make(0.3, 0.24, 0.3, C.cream, C.pinkDeep, -0.24, 0.38, 0.5));
   const top = make(0.28, 0.22, 0.28, C.sage, C.cream, 0, 0, -0.2);
-  top.position.y = 0.44;
+  top.position.y = 0.45;
   g.add(top);
   g.position.set(-0.6, 0, 0.95);
   g.scale.setScalar(1.15);
-  g.name = 'gifts';
   return g;
 }
 
 function balloons() {
   const g = new Group();
-  const anchor = new Vector3(0, 0.08, 0);
-  g.add(at(box(0.14, 0.1, 0.14, C.gold, 0.04), 0, 0.07, 0)); // 小砝码
+  const anchor = new Vector3(0, 0.1, 0);
+  g.add(flag(at(box(0.14, 0.12, 0.14, C.gold, 0.045), 0, 0.08, 0), 'shade'));
   const list = [
     [-0.15, 1.75, 0.05, C.pink, 0.24],
     [0.18, 1.88, -0.08, C.lilac, 0.23],
     [0.02, 2.05, 0.12, C.pinkDeep, 0.22],
-    [-0.08, 1.55, -0.2, C.cream, 0.2],
+    [-0.1, 1.55, -0.2, C.cream, 0.2],
     [0.24, 1.6, 0.18, C.gold, 0.19],
   ];
-  const sphere = new SphereGeometry(1, 20, 16);
+  const sphere = new SphereGeometry(1, 24, 18);
   const knot = new ConeGeometry(0.035, 0.06, 8);
   list.forEach(([x, y, z, color, r], i) => {
     const b = new Group();
-    const ball = new Mesh(sphere, mat(color));
-    ball.scale.set(r, r * 1.15, r);
-    b.add(ball);
+    const body = new Mesh(sphere, mat(color));
+    body.scale.set(r, r * 1.15, r);
+    flag(body, 'shade');
+    b.add(body);
     b.add(at(new Mesh(knot, mat(color)), 0, -r * 1.15 - 0.02, 0));
     b.position.set(x, y, z);
     b.userData.phase = i * 1.3;
     b.userData.base = y;
+    flag(b, 'unit');
     g.add(b);
     const curve = new CatmullRomCurve3([
       new Vector3(x, y - r * 1.15 - 0.04, z),
       new Vector3(x * 0.6 + 0.03, (y + anchor.y) / 2, z * 0.6),
       anchor.clone(),
     ]);
-    g.add(new Mesh(new TubeGeometry(curve, 12, 0.005, 3), mat(0xd7b9a0)));
+    g.add(flag(new Mesh(new TubeGeometry(curve, 12, 0.005, 3), mat(0xd7b9a0)), 'noOcclude'));
   });
   g.position.set(-1.0, 0, 0.0);
-  g.name = 'balloons';
   return g;
 }
 
 function cakeTable() {
   const g = new Group();
-  g.add(at(cyl(0.42, 0.42, 0.06, C.wood, 32), 0, 0.62, 0));
-  g.add(at(cyl(0.05, 0.07, 0.6, C.woodDark, 12), 0, 0.31, 0));
-  g.add(at(cyl(0.22, 0.24, 0.03, C.woodDark, 24), 0, 0.03, 0));
+  g.add(flag(at(cyl(0.42, 0.42, 0.06, C.wood, 40), 0, 0.62, 0), 'shade'));
+  g.add(flag(at(cyl(0.05, 0.07, 0.6, C.woodDark, 12), 0, 0.31, 0), 'shade'));
+  g.add(flag(at(cyl(0.22, 0.24, 0.04, C.woodDark, 24), 0, 0.02, 0), 'shade'));
 
   const cake = new Group();
-  cake.add(at(cyl(0.27, 0.27, 0.02, C.white, 32), 0, 0.01, 0)); // 盘子
-  cake.add(at(cyl(0.2, 0.2, 0.14, C.cream, 32), 0, 0.09, 0));
-  cake.add(at(cyl(0.205, 0.205, 0.03, C.pink, 32), 0, 0.17, 0)); // 糖霜
-  cake.add(at(cyl(0.14, 0.14, 0.1, C.pink, 32), 0, 0.23, 0));
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    cake.add(at(new Mesh(new SphereGeometry(0.025, 8, 6), mat(C.white)), Math.cos(a) * 0.18, 0.19, Math.sin(a) * 0.18));
+  cake.add(at(cyl(0.27, 0.27, 0.02, C.white, 40), 0, 0.01, 0)); // 盘子
+  cake.add(at(cyl(0.2, 0.2, 0.14, C.cream, 40), 0, 0.09, 0));
+  cake.add(at(cyl(0.207, 0.207, 0.035, C.pink, 40), 0, 0.165, 0)); // 糖霜
+  cake.add(at(cyl(0.14, 0.14, 0.1, C.pink, 40), 0, 0.23, 0));
+  cake.add(at(cyl(0.145, 0.145, 0.02, C.white, 40), 0, 0.275, 0));
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    cake.add(at(ball(0.026, C.white, 8, 6), Math.cos(a) * 0.18, 0.19, Math.sin(a) * 0.18));
+    if (i % 2) cake.add(at(ball(0.018, C.pinkDeep, 8, 6), Math.cos(a) * 0.1, 0.29, Math.sin(a) * 0.1));
   }
   cake.add(at(cyl(0.012, 0.012, 0.12, C.lilac, 8), 0, 0.34, 0)); // 蜡烛
-  const flame = new Mesh(new SphereGeometry(0.022, 10, 8), glow(0xffc56e));
+  const flame = new Mesh(new SphereGeometry(0.022, 10, 8), new MeshBasicMaterial({ color: 0xffc56e }));
   flame.scale.set(1, 1.6, 1);
   flame.position.set(0, 0.43, 0);
   flame.name = 'flame';
-  cake.add(flame);
-  // 小牌子（M3 写上"阿呆"）
-  cake.add(at(box(0.12, 0.07, 0.01, C.white, 0.01), 0.07, 0.36, 0.06));
-  cake.add(at(cyl(0.004, 0.004, 0.1, C.gold, 6), 0.07, 0.3, 0.055));
+  cake.add(flag(flame, 'keep', 'noOcclude'));
+
+  // 小牌子：朝向镜头，"阿呆"两个字由 paint.js 画上去
+  const sign = new Group();
+  sign.add(at(box(0.19, 0.105, 0.012, C.white, 0.014), 0, 0.07, 0));
+  sign.add(at(cyl(0.004, 0.004, 0.12, C.gold, 6), 0, 0, -0.008));
+  const label = new Mesh(new PlaneGeometry(0.18, 0.096), new MeshBasicMaterial({ transparent: true }));
+  label.name = 'signLabel';
+  sign.add(flag(at(label, 0, 0.07, 0.0075), 'keep', 'noOcclude'));
+  sign.position.set(0.1, 0.27, 0.1);
+  sign.rotation.y = Math.PI / 4;
+  sign.traverse((o) => flag(o, 'noOcclude'));
+  cake.add(sign);
+
   cake.position.y = 0.65;
   g.add(cake);
-
   g.position.set(0.72, 0.02, -0.3);
   g.scale.setScalar(1.25);
-  g.name = 'cake';
   return g;
 }
 
 export function buildRoom() {
   const root = new Group();
-  root.add(shell(), rug(), windowOnRightWall(), stringLights(), bunting(), shelf(), lamp(), plant());
+  flag(root, 'unit');
+  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), bunting(), shelf(), lamp(), plant());
   const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;
     obj.userData.baseScale = obj.scale.x;
+    flag(obj, 'unit');
     root.add(obj);
   }
+  root.updateMatrixWorld(true);
   return { root, interactive };
 }

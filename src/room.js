@@ -1,9 +1,12 @@
 import {
   WebGLRenderer, Scene, OrthographicCamera, HemisphereLight, DirectionalLight,
-  Raycaster, Vector2, Vector3, Clock, NeutralToneMapping, MathUtils,
+  PointLight, Raycaster, Vector2, Vector3, Clock, NeutralToneMapping, MathUtils,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildRoom } from './room/scene.js';
+import { buildRoom, LAMP } from './room/scene.js';
+import { collectOccluders, bakeUnit } from './room/bake.js';
+import { addPaintedLight } from './room/paint.js';
+import { preview } from './clock.js';
 
 // 镜头限制：只能在房间正面小范围转动，永远看不到墙后和地板下
 const AZIMUTH = MathUtils.degToRad(45);
@@ -29,13 +32,21 @@ export function startRoom(el) {
   renderer.toneMapping = NeutralToneMapping;
 
   const scene = new Scene();
-  scene.add(new HemisphereLight(0xfff6ee, 0xf3c6cf, 2.2));
-  const sun = new DirectionalLight(0xfff0dd, 1.6);
+  // 天空偏奶油、地面偏粉：物体朝下的面会带一点地板反上来的粉色
+  scene.add(new HemisphereLight(0xfff6ee, 0xf5c4cd, 2.3));
+  const sun = new DirectionalLight(0xfff0dd, 1.4);
   sun.position.set(3, 6, 4);
   scene.add(sun);
+  const lampLight = new PointLight(0xffb878, 1.6, 2.6, 1.2);
+  lampLight.position.set(LAMP.x + 0.1, LAMP.shadeY - 0.2, LAMP.z + 0.1);
+  scene.add(lampLight);
 
   const { root, interactive } = buildRoom();
+  const occluders = collectOccluders(root);
+  const updateLight = addPaintedLight(root, occluders, renderer);
+  bakeUnit(root, occluders);
   scene.add(root);
+  if (preview) window.__room = { renderer, scene };
 
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
   const controls = new OrbitControls(camera, canvas);
@@ -150,6 +161,7 @@ export function startRoom(el) {
       else pops.set(obj, np);
     }
 
+    updateLight(camera, t);
     renderer.render(scene, camera);
   });
 }
