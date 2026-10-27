@@ -167,18 +167,44 @@ body {
 
 /* ---------- 房间（占位） ---------- */
 
-#room { position: fixed; inset: 0; }
-.placeholder {
-  position: absolute; top: 50%; left: 0; right: 0;
-  text-align: center; color: var(--ink-soft);
+#room { position: fixed; inset: 0; animation: fade-in .5s ease both; }
+.room-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.room-hint, .room-toast {
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 248, 241, .9);
+  box-shadow: 0 8px 20px -12px rgba(203, 120, 140, .8);
+  font-size: 14px;
+  color: var(--ink);
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
 }
+.room-hint {
+  bottom: max(28px, env(safe-area-inset-bottom));
+  animation: appear .6s 2.2s ease both, hint-pulse 2.4s 2.8s ease-in-out infinite;
+  transition: opacity .4s ease;
+}
+.room-hint.gone { opacity: 0; animation: none; }
+.room-toast {
+  top: max(24px, env(safe-area-inset-top));
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.room-toast.show { opacity: 1; }
 
 /* ---------- 动画 ---------- */
 
 @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes appear { from { opacity: 0; } }
 @keyframes fade-out { to { opacity: 0; transform: scale(1.04); } }
 @keyframes bob { 50% { transform: translateY(-5px) rotate(-1.5deg); } }
 @keyframes twinkle { 50% { opacity: .55; } }
+@keyframes hint-pulse { 50% { transform: translateX(-50%) scale(1.06); } }
 @keyframes drift {
   from { transform: translateY(0) translateX(0); }
   50%  { transform: translateY(55vh) translateX(14px); }

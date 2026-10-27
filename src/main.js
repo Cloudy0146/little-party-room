@@ -6,6 +6,15 @@ const pad = (n) => String(n).padStart(2, '0');
 
 let timer = 0;
 
+// 3D 房间的代码比较大，等倒计时页显示完、手机空闲时再在背景下载，不拖慢首屏
+let roomModule;
+const loadRoom = () =>
+  (roomModule ??= import('./room.js').catch((err) => {
+    roomModule = null; // 网络不好下载失败时，下次点击再试
+    throw err;
+  }));
+const whenIdle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 1500));
+
 function showCountdown() {
   const visits = Number.isFinite(fakeVisits) ? fakeVisits : recordVisit();
   $('quip').textContent = quipFor(visits);
@@ -14,6 +23,7 @@ function showCountdown() {
   // 手机锁屏或切到后台时计时器会被暂停，回来时立刻重算一次
   document.addEventListener('visibilitychange', tick);
   window.addEventListener('pageshow', tick);
+  window.addEventListener('load', () => whenIdle(loadRoom), { once: true });
 }
 
 function tick() {
@@ -37,14 +47,21 @@ function showEntrance() {
   $('countdown').hidden = true;
   $('entrance').hidden = false;
   $('enter').addEventListener('click', enterRoom, { once: true });
+  loadRoom();
 }
 
 async function enterRoom() {
   const entrance = $('entrance');
+  let mod;
+  try {
+    mod = await loadRoom();
+  } catch {
+    $('enter').addEventListener('click', enterRoom, { once: true });
+    return;
+  }
   entrance.classList.add('leaving');
   entrance.addEventListener('animationend', () => (entrance.hidden = true), { once: true });
-  const { startRoom } = await import('./room.js');
-  startRoom($('room'));
+  mod.startRoom($('room'));
 }
 
 if (isUnlocked()) showEntrance();
