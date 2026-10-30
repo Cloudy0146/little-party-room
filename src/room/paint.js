@@ -5,7 +5,7 @@ import {
   Points, PointsMaterial, BufferGeometry, Float32BufferAttribute, Sprite, SpriteMaterial, AdditiveBlending,
   Vector3,
 } from 'three';
-import { INNER, WALL_H, RUG, WINDOW, LAMP, BULBS } from './scene.js';
+import { INNER, HALF, WALL_H, RUG, WINDOW, LAMP, BULBS } from './scene.js';
 
 // ---------- 小工具 ----------
 
@@ -134,7 +134,7 @@ function cornerShade(ctx, x0, y0, x1, y1) {
 // ---------- 地板 ----------
 
 function paintFloor(occluders, renderer) {
-  const x0 = INNER, x1 = 1.48, z0 = INNER, z1 = 1.48;
+  const x0 = INNER, x1 = HALF - 0.02, z0 = INNER, z1 = HALF - 0.02;
   const surf = new Surface(x1 - x0, z1 - z0, 1024, (p) => [p.x - x0, p.z - z0]);
   const a = surf.a;
   const W = surf.widthM, H = surf.heightM;
@@ -251,7 +251,7 @@ function star(ctx, x, y, r, color) {
 
 function paintWall(side, occluders, renderer) {
   const y0 = 0.02, y1 = WALL_H - 0.1;
-  const a0 = INNER, a1 = 1.4;
+  const a0 = INNER, a1 = HALF - 0.1;
   // 左墙：画布左边是靠镜头的前缘，右边是墙角；右墙：画布左边是墙角
   const toLocal = side === 'left' ? (p) => [a1 - p.z, y1 - p.y] : (p) => [p.x - a0, y1 - p.y];
   const surf = new Surface(a1 - a0, y1 - y0, 512, toLocal);
