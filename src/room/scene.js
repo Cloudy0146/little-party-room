@@ -31,12 +31,8 @@ export const C = {
   white: 0xfffaf5,
 };
 
-// 概念稿（只在 concept-party-hall 分支，不上线）：?concept=a 加宽的派对厅；?concept=b 再加小动物宾客。
-// 不带参数就是现在的正式版房间
-export const CONCEPT = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('concept');
-export const HALL = CONCEPT === 'a' || CONCEPT === 'b';
-
-export const ROOM = HALL ? 4.2 : 3;
+// 派对厅：4.2 米见方（最早的小房间是 3 米）
+export const ROOM = 4.2;
 export const HALF = ROOM / 2;
 export const WALL_H = 2.2;
 const WALL_T = 0.26;
@@ -100,7 +96,7 @@ function shell() {
 
 // ---------- 装饰 ----------
 
-export const RUG = HALL ? { x: 0, z: 0, r: 1.3 } : { x: 0.15, z: 0.2, r: 1.0 };
+export const RUG = { x: 0, z: 0, r: 1.3 };
 
 function rugEdge() {
   // 地毯本体画在地板贴图上，这里只做一圈软软的边，让它有厚度
@@ -110,7 +106,7 @@ function rugEdge() {
   return flag(at(ring, RUG.x, 0.03, RUG.z), 'noOcclude');
 }
 
-export const WINDOW = { cx: HALL ? 0.95 : 0.35, cy: 1.3, w: 1.0, h: 0.95 };
+export const WINDOW = { cx: 0.95, cy: 1.3, w: 1.0, h: 0.95 };
 
 function curtain(w, h) {
   const geo = new BoxGeometry(w, h, 0.05, 12, 1, 1);
@@ -147,7 +143,7 @@ function windowOnRightWall() {
 
 export const BULBS = [];
 
-const K = HALF / 1.5; // 派对厅比原来的房间大多少
+const K = HALF / 1.5; // 灯串的弯曲点按最早 3 米房间设计，按比例放大
 
 function stringLights() {
   const g = new Group();
@@ -163,7 +159,7 @@ function stringLights() {
   ]);
   g.add(flag(new Mesh(new TubeGeometry(curve, 64, 0.008, 4), mat(C.woodDark)), 'noOcclude'));
   const bulb = new SphereGeometry(0.032, 10, 8);
-  const n = HALL ? 30 : 22;
+  const n = 30;
   for (let i = 0; i <= n; i++) {
     const p = curve.getPoint(i / n);
     p.y -= 0.04;
@@ -203,28 +199,16 @@ function bunting(points, n, w, h, onLeft, colorOffset = 0) {
   return g;
 }
 
+// 左墙留给"生日快乐"横幅，彩旗只挂右墙，从墙角挂到窗帘旁边
 function buntings() {
-  const x = INNER + 0.03;
   const z = INNER + 0.03;
-  if (HALL) {
-    // 派对厅：左墙留给"生日快乐"横幅，彩旗只挂右墙，从墙角挂到窗帘旁边
-    return bunting([
-      new Vector3(-2.0, 1.72, z), new Vector3(-1.4, 1.52, z), new Vector3(-0.75, 1.68, z), new Vector3(-0.1, 1.55, z),
-    ], 9, 0.17, 0.2, false);
-  }
-  const left = bunting([
-    new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
-  ], 9, 0.2, 0.24, true);
-  // 右墙：接着左墙那串从墙角拐过来，挂到窗帘旁边为止（台灯在它前面）
-  const right = bunting([
-    new Vector3(-1.38, 1.7, z), new Vector3(-0.98, 1.55, z), new Vector3(-0.6, 1.66, z),
-  ], 5, 0.16, 0.19, false, 4);
-  const g = new Group();
-  g.add(left, right);
-  return g;
+  return bunting([
+    new Vector3(-2.0, 1.72, z), new Vector3(-1.4, 1.52, z), new Vector3(-0.75, 1.68, z), new Vector3(-0.1, 1.55, z),
+  ], 9, 0.17, 0.2, false);
 }
 
-export const LAMP = HALL ? { x: -1.72, z: -1.72, shadeY: 1.38 } : { x: -1.12, z: -1.12, shadeY: 1.38 };
+// 台灯在后墙角，从气球拱门中间看得到
+export const LAMP = { x: -1.72, z: -1.72, shadeY: 1.38 };
 
 function lamp() {
   const g = new Group();
@@ -249,11 +233,11 @@ function plant() {
   g.add(at(cyl(0.148, 0.148, 0.03, 0x9b7a5c), 0, 0.301, 0));
   const leaves = [[0, 0.49, 0, 0.18], [0.11, 0.64, 0.05, 0.14], [-0.1, 0.68, -0.03, 0.13], [0.02, 0.82, 0, 0.11], [-0.06, 0.55, 0.1, 0.12]];
   leaves.forEach(([x, y, z, r], i) => g.add(at(ball(r, i % 2 ? C.sageDark : C.sage), x, y, z)));
-  g.position.set(1.15, 0.02, -1.12);
+  g.position.set(1.78, 0.02, -1.75);
   return g;
 }
 
-// 填补前面空地板：坐垫和派对帽
+// 右前方的坐垫和派对帽
 const CUSHION_LOBES = 6;
 const cushionIndent = (theta) => 1 - 0.045 * (0.5 + 0.5 * Math.cos(CUSHION_LOBES * theta));
 
@@ -286,7 +270,7 @@ function cushion() {
   piping.rotation.x = -Math.PI / 2;
   g.add(at(piping, 0, 0.12, 0));
   g.add(at(ball(0.035, C.white, 10, 8), 0, 0.275, 0));
-  g.position.set(1.0, 0.02, 0.95);
+  g.position.set(1.65, 0.02, 0.85);
   return g;
 }
 
@@ -297,7 +281,7 @@ function partyHat() {
   g.add(at(cyl(0.065, 0.065, 0.025, C.white, 20), 0, -0.01, 0));
   g.add(at(ball(0.04, C.gold, 10, 8), 0, 0.13, 0));
   g.rotation.z = 0.5;
-  g.position.set(0.52, 0.1, 1.28);
+  g.position.set(1.35, 0.1, 1.55);
   return g;
 }
 
@@ -329,8 +313,9 @@ function gifts() {
   const top = make(0.28, 0.22, 0.28, C.sage, C.cream, 0, 0, -0.2);
   top.position.y = 0.45;
   g.add(top);
-  g.position.set(-0.42, 0, 0.72);
-  g.scale.setScalar(1.35);
+  // 场地变大、整体缩小了，可以点的三样都放大一点
+  g.position.set(0.55, 0, 1.6);
+  g.scale.setScalar(1.55);
   return g;
 }
 
@@ -367,7 +352,8 @@ function balloons() {
     ]);
     g.add(flag(new Mesh(new TubeGeometry(curve, 12, 0.005, 3), mat(0xd7b9a0)), 'noOcclude'));
   });
-  g.position.set(-1.0, 0, 0.0);
+  g.position.set(1.65, 0, -0.75);
+  g.scale.setScalar(1.15);
   return g;
 }
 
@@ -415,12 +401,12 @@ function cakeTable() {
   const cake = buildCake();
   cake.position.y = 0.65;
   g.add(cake);
-  g.position.set(0.55, 0.02, -0.15);
-  g.scale.setScalar(1.5);
+  g.position.set(0, 0.02, 0); // 蛋糕在派对厅正中间
+  g.scale.setScalar(1.7);
   return g;
 }
 
-// ---------- 概念稿：派对厅才有的东西 ----------
+// ---------- 派对：零食桌、横幅、气球拱门、小动物宾客 ----------
 
 // 靠左墙的零食饮料长桌
 const SNACK_Z = 1.0; // 长桌放在左墙前半段，后半段留给气球拱门的脚
@@ -497,11 +483,15 @@ function banner() {
     g.lineTo(cx - fw / 2, y + fh);
     g.closePath();
     g.fill();
+    // 字用真正的像素大小画（不靠缩放），手机上才不会因为字号太小被画坏
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = '#C9707F';
-    g.font = '700 0.19px PartyRound, sans-serif';
+    g.font = `700 ${Math.round(0.19 * sx)}px PartyRound, sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(ch, cx, y + 0.14);
+    g.fillText(ch, cx * sx, (y + 0.14) * sx);
+    g.restore();
   });
   const tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
@@ -621,24 +611,11 @@ function guests() {
 export function buildRoom() {
   const root = new Group();
   flag(root, 'unit');
-  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat());
+  root.add(
+    shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat(),
+    snackTable(), banner(), balloonArch(), guests(),
+  );
   const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
-  if (HALL) {
-    root.add(snackTable(), banner(), balloonArch());
-    if (CONCEPT === 'b') root.add(guests());
-    // 派对厅的摆位：蛋糕在正中间，礼物左前，气球右边，坐垫右前
-    // 场地变大、整体缩小了，可以点的三样放大一点
-    interactive.cake.position.set(0, 0.02, 0);
-    interactive.cake.scale.setScalar(1.7);
-    interactive.gifts.position.set(0.55, 0, 1.6);
-    interactive.gifts.scale.setScalar(1.55);
-    interactive.balloons.position.set(1.65, 0, -0.75);
-    interactive.balloons.scale.setScalar(1.15);
-    const [plantObj, cushionObj, hatObj] = root.children.slice(6, 9);
-    plantObj.position.set(1.78, 0.02, -1.75);
-    cushionObj.position.set(1.65, 0.02, 0.85);
-    hatObj.position.set(1.35, 0.1, 1.55);
-  }
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;
     obj.userData.baseScale = obj.scale.x;

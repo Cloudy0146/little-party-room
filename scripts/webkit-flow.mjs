@@ -84,8 +84,10 @@ const fontCheck = await page.evaluate(async () => {
 step(`字体：${fontCheck.map((f) => `${f.ch}${f.ok ? '✓' : '✗'}`).join(' ')}`);
 
 // 3. 进入房间
+const t0 = Date.now();
 await page.tap('#enter');
 await page.waitForFunction(() => window.__room);
+step(`点「进入」到房间建好：${Date.now() - t0} ms（电脑上；iPhone 8 大约慢几倍）`);
 await wait(4500);
 const gl = await page.evaluate(() => {
   const { renderer } = window.__room;
