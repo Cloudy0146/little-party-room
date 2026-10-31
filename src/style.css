@@ -347,6 +347,43 @@ body {
 }
 .room-toast.show { opacity: 1; }
 
+/* 小茶杯人头上跳出的一句小字（位置由 room.js 每帧算） */
+.tea-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 6px 14px -8px rgba(203, 120, 140, .8);
+  color: #C9707F;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(32px, -50%) scale(.6);
+  transform-origin: left center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.tea-bubble::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -5px;
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: rgba(255, 255, 255, .95);
+  transform: translateY(-50%);
+}
+.tea-bubble.show {
+  opacity: 1;
+  transform: translate(32px, -50%) scale(1);
+  transition: opacity .15s ease, transform .35s cubic-bezier(.3, 1.6, .5, 1);
+}
+.cake-mode .tea-bubble { opacity: 0; }
+
 /* ---------- 动画 ---------- */
 
 @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } }

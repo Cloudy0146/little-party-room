@@ -146,7 +146,14 @@ for (let i = 0; i < 5; i++) {
   if (i === 0) await shot('balloon-pop');
 }
 step(`气球：每戳一下后破了几个 → ${pops.join(' ')}`);
-await wait(5000);
+
+// 5b. 小茶杯人：点一下应该跳出小字，过两秒多自己消失
+await tapObject('teacup', 0.45);
+await wait(500);
+await shot('teacup');
+const bubbleOn = await page.evaluate(() => document.querySelector('.tea-bubble').classList.contains('show'));
+step(`茶杯人：小字「${await page.textContent('.tea-bubble')}」show=${bubbleOn}`);
+await wait(4500);
 
 // 6. 蛋糕 → 吹蜡烛
 await tapObject('cake', 1.1);

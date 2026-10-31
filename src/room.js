@@ -72,11 +72,12 @@ export function startRoom(el, music = createMusic()) {
         </div>
       </div>
     </div>
-    <p class="room-toast"></p>`);
+    <p class="room-toast"></p>
+    <p class="tea-bubble" aria-live="polite"></p>`);
   const $ = (sel) => el.querySelector(sel);
   const title = $('.room-title'), hint = $('.room-hint'), wallet = $('.room-wallet');
   const cakePanel = $('.cake-panel'), cakeMsg = $('.cake-msg'), cakeActions = $('.cake-actions');
-  const toast = $('.room-toast'), wxHint = $('.wx-hint');
+  const toast = $('.room-toast'), wxHint = $('.wx-hint'), teaBubble = $('.tea-bubble');
 
   // ---------- 场景 ----------
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -320,7 +321,51 @@ export function startRoom(el, music = createMusic()) {
       if (b) popBalloon(b);
     } else if (key === 'cake') {
       enterCake();
+    } else if (key === 'teacup') {
+      teaT = 0;
+      teaBubble.textContent = '使唤券还没用哦';
+      teaBubble.classList.remove('show');
+      void teaBubble.offsetWidth; // 连点时让小字重新跳一次
+      teaBubble.classList.add('show');
+      clearTimeout(teaBubbleTimer);
+      teaBubbleTimer = setTimeout(() => teaBubble.classList.remove('show'), 2200);
     }
+  }
+
+  // ---------- 小茶杯人：平时热气轻轻飘，点一下晃一晃、冒一阵热气、跳出一句小字 ----------
+  const teacup = interactive.teacup;
+  const steam = teacup.getObjectByName('steam');
+  const puffs = teacup.getObjectByName('puffs').children;
+  const TEA_HEAD = new Vector3(0, 0.5, 0).applyMatrix4(teacup.matrixWorld); // 小字出现在杯子右边，不挡蛋糕和热气
+  let teaT = -1, teaBubbleTimer = 0;
+  function updateTeacup(t) {
+    steam.position.x = Math.sin(t * 1.7) * 0.012;
+    steam.scale.y = 1 + Math.sin(t * 2.3) * 0.06;
+  }
+  function animateTeacup(dt) {
+    if (teaT < 0) return;
+    teaT += dt;
+    // 晃一下：左右摇，越摇越小
+    const w = Math.max(0, 1 - teaT / 0.9);
+    teacup.rotation.z = Math.sin(teaT * 22) * 0.13 * w;
+    teacup.rotation.x = Math.sin(teaT * 22 + 1) * 0.04 * w;
+    // 一阵热气：三团白雾往上冒、变大、变淡
+    const k = Math.min(teaT / 1.4, 1);
+    puffs[0].material.opacity = 0.9 * (1 - k * k) * Math.min(teaT / 0.15, 1);
+    puffs.forEach((p, i) => {
+      const ki = Math.max(0, Math.min((teaT - i * 0.12) / 1.2, 1));
+      p.visible = ki > 0 && k < 1;
+      p.position.copy(p.userData.start).setY(p.userData.start.y + ease(ki) * 0.4);
+      p.scale.setScalar(0.5 + ki * 1.3);
+    });
+    if (k >= 1) teaT = -1;
+  }
+  function placeTeaBubble() {
+    if (!teaBubble.classList.contains('show')) return;
+    _v.copy(TEA_HEAD).project(camera);
+    const r = canvas.getBoundingClientRect();
+    teaBubble.style.left = `${r.left + ((_v.x + 1) / 2) * r.width}px`;
+    teaBubble.style.top = `${r.top + ((1 - _v.y) / 2) * r.height}px`;
   }
 
   // ---------- 气球：戳破，过一会儿长回来 ----------
@@ -502,6 +547,8 @@ export function startRoom(el, music = createMusic()) {
 
     // 可互动物件的轻微提示动作
     updateBalloons(dt, t);
+    updateTeacup(t);
+    animateTeacup(dt);
     if (!bounces.has(interactive.gifts)) interactive.gifts.position.y = Math.abs(Math.sin(t * 2.2)) * 0.012;
     if (flameT > 0) {
       flameT += dt;
@@ -524,5 +571,6 @@ export function startRoom(el, music = createMusic()) {
     confetti.update(dt, pxPerMeter);
     updateLight(camera, t, flameT > 0);
     renderer.render(scene, camera);
+    placeTeaBubble();
   });
 }

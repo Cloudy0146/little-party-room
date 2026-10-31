@@ -14,6 +14,7 @@ import {
   Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, CylinderGeometry, SphereGeometry,
   ConeGeometry, BoxGeometry, TorusGeometry, BufferGeometry, Float32BufferAttribute,
   CatmullRomCurve3, TubeGeometry, Vector3, PlaneGeometry, CanvasTexture, SRGBColorSpace,
+  LatheGeometry, Vector2,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -270,7 +271,7 @@ function cushion() {
   piping.rotation.x = -Math.PI / 2;
   g.add(at(piping, 0, 0.12, 0));
   g.add(at(ball(0.035, C.white, 10, 8), 0, 0.275, 0));
-  g.position.set(1.65, 0.02, 0.85);
+  g.position.set(1.75, 0.02, 0.2); // 前面留给小茶杯人
   return g;
 }
 
@@ -608,6 +609,89 @@ function guests() {
   return g;
 }
 
+// 原创黏土小茶杯人：圆滚滚的杯身就是身体和脸，右边是杯把，头顶冒一缕热气，脚边插着名牌。正面是 +z
+function teacup() {
+  const g = new Group();
+  const CUP = 0xc4e6cd; // 薄荷青瓷
+  // 杯身：底部圆润、杯口微微外翻，里面有一层茶
+  const profile = [[0, 0.07], [0.09, 0.07], [0.135, 0.1], [0.158, 0.17], [0.172, 0.3], [0.18, 0.43], [0.186, 0.5], [0.178, 0.515], [0.165, 0.5], [0.16, 0.47], [0, 0.47]]
+    .map(([x, y]) => new Vector2(x, y));
+  g.add(flag(new Mesh(new LatheGeometry(profile, 28), mat(CUP)), 'shade'));
+  g.add(at(cyl(0.161, 0.161, 0.01, 0xc98a52, 28), 0, 0.472, 0)); // 茶
+  g.add(at(cyl(0.186, 0.182, 0.035, C.pinkDeep, 28), 0, 0.445, 0)); // 杯口一圈粉色花边
+  // 杯把
+  const handle = new Mesh(new TorusGeometry(0.065, 0.022, 8, 16, Math.PI), mat(CUP));
+  handle.rotation.z = -Math.PI / 2;
+  g.add(at(handle, 0.17, 0.3, 0));
+  // 小手小脚
+  const blob = (r, color, sx, sy, sz, x, y, z) => {
+    const m = ball(r, color, 12, 9);
+    m.scale.set(sx, sy, sz);
+    return at(m, x, y, z);
+  };
+  for (const s of [-1, 1]) g.add(blob(0.05, CUP, 1, 0.65, 1.3, s * 0.075, 0.035, 0.07));
+  g.add(blob(0.045, CUP, 1, 1, 1, -0.19, 0.2, 0.05));
+  g.add(blob(0.045, CUP, 1, 1, 1, 0.14, 0.17, 0.11));
+  // 脸：和小动物一样的眼睛、腮红，再加一个小笑嘴
+  for (const s of [-1, 1]) {
+    g.add(blob(0.018, 0x5a4048, 1, 1.2, 1, s * 0.055, 0.3, 0.165));
+    g.add(blob(0.028, 0xffa7b8, 1, 0.6, 0.4, s * 0.1, 0.265, 0.142));
+  }
+  const smile = new Mesh(new TorusGeometry(0.02, 0.006, 6, 12, Math.PI), mat(0x5a4048));
+  smile.rotation.z = Math.PI;
+  g.add(at(smile, 0, 0.268, 0.168));
+  // 派对帽，歪戴在茶面上
+  const cone = new Mesh(new ConeGeometry(0.07, 0.17, 16), mat(C.gold));
+  cone.rotation.z = 0.3;
+  g.add(at(cone, -0.05, 0.56, -0.01));
+  g.add(at(ball(0.025, C.white, 8, 6), -0.075, 0.645, -0.01));
+  // 头顶一缕热气（单独一个网格，会飘动；点它时冒的一阵热气也在这里）
+  const steamMat = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false });
+  const curve = new CatmullRomCurve3([[0.06, 0.48, 0], [0.09, 0.56, 0], [0.05, 0.63, 0], [0.09, 0.7, 0], [0.07, 0.76, 0]].map((p) => new Vector3(...p)));
+  const steam = new Mesh(new TubeGeometry(curve, 24, 0.011, 6), steamMat);
+  steam.name = 'steam';
+  g.add(flag(steam, 'keep', 'noOcclude'));
+  const puffMat = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  const puffs = new Group();
+  puffs.name = 'puffs';
+  for (const [x, z] of [[0.05, 0.02], [-0.04, -0.03], [0.1, -0.05]]) {
+    const p = new Mesh(new SphereGeometry(0.05, 10, 8), puffMat);
+    p.userData.start = new Vector3(x, 0.52, z);
+    p.visible = false;
+    puffs.add(flag(p, 'keep', 'noOcclude'));
+  }
+  g.add(puffs);
+  // 脚边的名牌
+  const sign = new Group();
+  sign.add(at(cyl(0.008, 0.008, 0.22, C.woodDark, 8), 0, 0.11, 0));
+  sign.add(at(box(0.38, 0.125, 0.014, C.white, 0.025), 0, 0.23, 0));
+  sign.add(flag(at(nameLabel('茶修芥䄱', 0.37, 0.12), 0, 0.23, 0.011), 'keep')); // 离牌子表面 4mm
+  sign.position.set(0.27, 0, 0.22);
+  sign.rotation.y = 0.45; // 牌子正对镜头
+  sign.traverse((o) => flag(o, 'noOcclude'));
+  g.add(sign);
+  g.position.set(1.2, 0.02, 0.7);
+  g.rotation.y = 0.3; // 和小动物一样，脸朝镜头偏一点
+  g.scale.setScalar(1.75); // 比小动物大一点：它是主人
+  return g;
+}
+
+// 小牌子上的字：用真正的像素大小画，手机上才不会画坏
+function nameLabel(text, w, h) {
+  const c = document.createElement('canvas');
+  c.width = 384;
+  c.height = Math.round((384 * h) / w);
+  const g = c.getContext('2d');
+  g.fillStyle = '#C9707F';
+  g.font = `700 ${Math.round(c.height * 0.7)}px PartyRound, sans-serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, c.width / 2, c.height * 0.54);
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  return new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ map: tex, transparent: true }));
+}
+
 export function buildRoom() {
   const root = new Group();
   flag(root, 'unit');
@@ -615,7 +699,7 @@ export function buildRoom() {
     shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat(),
     snackTable(), banner(), balloonArch(), guests(),
   );
-  const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
+  const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable(), teacup: teacup() };
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;
     obj.userData.baseScale = obj.scale.x;
