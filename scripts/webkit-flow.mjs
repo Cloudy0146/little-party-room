@@ -1,5 +1,6 @@
 // 用 Playwright 的 WebKit 按 iPhone 8 的尺寸把整个流程走一遍，检查有没有报错、字有没有缺。
 // 先 npm run build，再运行：node scripts/webkit-flow.mjs <截图文件夹>
+// 测正式网址：设 BASE_URL=https://cloudy0146.github.io/little-party-room/ 就不起本地服务器
 //
 // 注意：这是电脑上的 WebKit，不是真的 iPhone Safari。它能抓到脚本报错、缺字、流程断掉，
 // 但性能、AR Quick Look、静音键这些只能在真手机上看。
@@ -11,7 +12,8 @@ import { serveDist } from './serve-dist.mjs';
 
 const OUT = path.resolve(process.argv[2] ?? 'webkit-shots');
 const PORT = 4174;
-const server = await serveDist(PORT);
+const BASE = process.env.BASE_URL ?? `http://127.0.0.1:${PORT}/`;
+const server = process.env.BASE_URL ? null : await serveDist(PORT);
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await webkit.launch();
@@ -49,14 +51,14 @@ async function tapObject(key, lift) {
 }
 
 // 1. 倒计时
-await page.goto(`http://127.0.0.1:${PORT}/`);
+await page.goto(BASE);
 await page.waitForSelector('#countdown:not([hidden])');
 await wait(800);
 await shot('countdown');
 step(`倒计时：${(await page.textContent('.timer')).replace(/\s+/g, ' ').trim()}`);
 
 // 2. 解锁后的入场页
-await page.goto(`http://127.0.0.1:${PORT}/?frosting=7f3a`);
+await page.goto(`${BASE}?frosting=7f3a`);
 await page.waitForSelector('#entrance:not([hidden])');
 await wait(1200);
 await shot('entrance');
@@ -187,4 +189,4 @@ step(`回到房间：cake-mode=${await page.evaluate(() => document.querySelecto
 
 console.log(problems.length ? `\n问题 ${problems.length} 条：\n${problems.join('\n')}` : '\n没有报错');
 await browser.close();
-server.close();
+server?.close();
