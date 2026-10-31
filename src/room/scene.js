@@ -13,7 +13,7 @@
 import {
   Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, CylinderGeometry, SphereGeometry,
   ConeGeometry, BoxGeometry, TorusGeometry, BufferGeometry, Float32BufferAttribute,
-  CatmullRomCurve3, TubeGeometry, Vector3, PlaneGeometry,
+  CatmullRomCurve3, TubeGeometry, Vector3, PlaneGeometry, CanvasTexture, SRGBColorSpace,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -31,7 +31,8 @@ export const C = {
   white: 0xfffaf5,
 };
 
-export const ROOM = 3;
+// 派对厅：4.2 米见方（最早的小房间是 3 米）
+export const ROOM = 4.2;
 export const HALF = ROOM / 2;
 export const WALL_H = 2.2;
 const WALL_T = 0.26;
@@ -95,7 +96,7 @@ function shell() {
 
 // ---------- 装饰 ----------
 
-export const RUG = { x: 0.15, z: 0.2, r: 1.0 };
+export const RUG = { x: 0, z: 0, r: 1.3 };
 
 function rugEdge() {
   // 地毯本体画在地板贴图上，这里只做一圈软软的边，让它有厚度
@@ -105,7 +106,7 @@ function rugEdge() {
   return flag(at(ring, RUG.x, 0.03, RUG.z), 'noOcclude');
 }
 
-export const WINDOW = { cx: 0.35, cy: 1.3, w: 1.0, h: 0.95 };
+export const WINDOW = { cx: 0.95, cy: 1.3, w: 1.0, h: 0.95 };
 
 function curtain(w, h) {
   const geo = new BoxGeometry(w, h, 0.05, 12, 1, 1);
@@ -142,22 +143,25 @@ function windowOnRightWall() {
 
 export const BULBS = [];
 
+const K = HALF / 1.5; // 灯串的弯曲点按最早 3 米房间设计，按比例放大
+
 function stringLights() {
   const g = new Group();
   const y = WALL_H;
   const curve = new CatmullRomCurve3([
     new Vector3(INNER + 0.03, y - 0.12, HALF - 0.1),
-    new Vector3(INNER + 0.03, y - 0.4, 0.4),
-    new Vector3(INNER + 0.03, y - 0.16, -0.5),
+    new Vector3(INNER + 0.03, y - 0.4, 0.4 * K),
+    new Vector3(INNER + 0.03, y - 0.16, -0.5 * K),
     new Vector3(INNER + 0.06, y - 0.12, INNER + 0.06),
-    new Vector3(-0.5, y - 0.38, INNER + 0.03),
-    new Vector3(0.5, y - 0.14, INNER + 0.03),
+    new Vector3(-0.5 * K, y - 0.38, INNER + 0.03),
+    new Vector3(0.5 * K, y - 0.14, INNER + 0.03),
     new Vector3(HALF - 0.1, y - 0.34, INNER + 0.03),
   ]);
   g.add(flag(new Mesh(new TubeGeometry(curve, 64, 0.008, 4), mat(C.woodDark)), 'noOcclude'));
   const bulb = new SphereGeometry(0.032, 10, 8);
-  for (let i = 0; i <= 22; i++) {
-    const p = curve.getPoint(i / 22);
+  const n = 30;
+  for (let i = 0; i <= n; i++) {
+    const p = curve.getPoint(i / n);
     p.y -= 0.04;
     BULBS.push(p.clone());
     g.add(flag(at(new Mesh(bulb, glow(0xfff0c8)), p.x, p.y, p.z), 'noOcclude'));
@@ -195,22 +199,16 @@ function bunting(points, n, w, h, onLeft, colorOffset = 0) {
   return g;
 }
 
+// 左墙留给"生日快乐"横幅，彩旗只挂右墙，从墙角挂到窗帘旁边
 function buntings() {
-  const x = INNER + 0.03;
   const z = INNER + 0.03;
-  const left = bunting([
-    new Vector3(x, 1.6, 1.25), new Vector3(x, 1.38, 0.45), new Vector3(x, 1.52, -0.4), new Vector3(x, 1.75, -1.3),
-  ], 9, 0.2, 0.24, true);
-  // 右墙：接着左墙那串从墙角拐过来，挂到窗帘旁边为止（台灯在它前面）
-  const right = bunting([
-    new Vector3(-1.38, 1.7, z), new Vector3(-0.98, 1.55, z), new Vector3(-0.6, 1.66, z),
-  ], 5, 0.16, 0.19, false, 4);
-  const g = new Group();
-  g.add(left, right);
-  return g;
+  return bunting([
+    new Vector3(-2.0, 1.72, z), new Vector3(-1.4, 1.52, z), new Vector3(-0.75, 1.68, z), new Vector3(-0.1, 1.55, z),
+  ], 9, 0.17, 0.2, false);
 }
 
-export const LAMP = { x: -1.12, z: -1.12, shadeY: 1.38 };
+// 台灯在后墙角，从气球拱门中间看得到
+export const LAMP = { x: -1.72, z: -1.72, shadeY: 1.38 };
 
 function lamp() {
   const g = new Group();
@@ -235,11 +233,11 @@ function plant() {
   g.add(at(cyl(0.148, 0.148, 0.03, 0x9b7a5c), 0, 0.301, 0));
   const leaves = [[0, 0.49, 0, 0.18], [0.11, 0.64, 0.05, 0.14], [-0.1, 0.68, -0.03, 0.13], [0.02, 0.82, 0, 0.11], [-0.06, 0.55, 0.1, 0.12]];
   leaves.forEach(([x, y, z, r], i) => g.add(at(ball(r, i % 2 ? C.sageDark : C.sage), x, y, z)));
-  g.position.set(1.15, 0.02, -1.12);
+  g.position.set(1.78, 0.02, -1.75);
   return g;
 }
 
-// 填补前面空地板：坐垫和派对帽
+// 右前方的坐垫和派对帽
 const CUSHION_LOBES = 6;
 const cushionIndent = (theta) => 1 - 0.045 * (0.5 + 0.5 * Math.cos(CUSHION_LOBES * theta));
 
@@ -272,7 +270,7 @@ function cushion() {
   piping.rotation.x = -Math.PI / 2;
   g.add(at(piping, 0, 0.12, 0));
   g.add(at(ball(0.035, C.white, 10, 8), 0, 0.275, 0));
-  g.position.set(1.0, 0.02, 0.95);
+  g.position.set(1.65, 0.02, 0.85);
   return g;
 }
 
@@ -283,7 +281,7 @@ function partyHat() {
   g.add(at(cyl(0.065, 0.065, 0.025, C.white, 20), 0, -0.01, 0));
   g.add(at(ball(0.04, C.gold, 10, 8), 0, 0.13, 0));
   g.rotation.z = 0.5;
-  g.position.set(0.52, 0.1, 1.28);
+  g.position.set(1.35, 0.1, 1.55);
   return g;
 }
 
@@ -315,8 +313,9 @@ function gifts() {
   const top = make(0.28, 0.22, 0.28, C.sage, C.cream, 0, 0, -0.2);
   top.position.y = 0.45;
   g.add(top);
-  g.position.set(-0.42, 0, 0.72);
-  g.scale.setScalar(1.35);
+  // 场地变大、整体缩小了，可以点的三样都放大一点
+  g.position.set(0.55, 0, 1.6);
+  g.scale.setScalar(1.55);
   return g;
 }
 
@@ -353,7 +352,8 @@ function balloons() {
     ]);
     g.add(flag(new Mesh(new TubeGeometry(curve, 12, 0.005, 3), mat(0xd7b9a0)), 'noOcclude'));
   });
-  g.position.set(-1.0, 0, 0.0);
+  g.position.set(1.65, 0, -0.75);
+  g.scale.setScalar(1.15);
   return g;
 }
 
@@ -401,15 +401,220 @@ function cakeTable() {
   const cake = buildCake();
   cake.position.y = 0.65;
   g.add(cake);
-  g.position.set(0.55, 0.02, -0.15);
-  g.scale.setScalar(1.5);
+  g.position.set(0, 0.02, 0); // 蛋糕在派对厅正中间
+  g.scale.setScalar(1.7);
+  return g;
+}
+
+// ---------- 派对：零食桌、横幅、气球拱门、小动物宾客 ----------
+
+// 靠左墙的零食饮料长桌
+const SNACK_Z = 1.0; // 长桌放在左墙前半段，后半段留给气球拱门的脚
+
+function snackTable() {
+  const g = new Group();
+  const len = 1.6, dep = 0.5, h = 0.72;
+  g.add(flag(at(box(dep, h, len, C.white, 0.04), 0, h / 2, 0), 'shade'));
+  // 桌布上沿一圈粉色裙边，比桌面高 2cm、宽 1cm，没有贴在一起的面
+  g.add(at(box(dep + 0.02, 0.16, len + 0.02, C.pink, 0.03), 0, h - 0.06, 0));
+  const top = h + 0.02;
+  // 饮料桶：玻璃罐里是紫色果汁
+  g.add(at(cyl(0.09, 0.09, 0.26, 0xd6c2ff, 20), 0, top + 0.13, -0.58));
+  g.add(at(cyl(0.095, 0.095, 0.03, C.cream, 20), 0, top + 0.275, -0.58));
+  g.add(at(cyl(0.07, 0.08, 0.04, C.gold, 20), 0, top + 0.02, -0.58));
+  // 一排纸杯
+  const cupColors = [0xffb3c6, 0xb9ebc8, 0xffe39a, 0xd6c2ff];
+  for (let i = 0; i < 6; i++) {
+    g.add(at(cyl(0.032, 0.026, 0.08, cupColors[i % 4], 12), (i % 2 ? 0.07 : -0.07), top + 0.04, -0.34 + Math.floor(i / 2) * 0.09));
+  }
+  // 纸杯蛋糕盘
+  g.add(at(cyl(0.17, 0.17, 0.02, C.white, 28), 0, top + 0.01, 0.05));
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const x = Math.cos(a) * 0.09, z = 0.05 + Math.sin(a) * 0.09;
+    g.add(at(cyl(0.035, 0.028, 0.045, C.gold, 12), x, top + 0.045, z));
+    g.add(at(ball(0.042, i % 2 ? C.lilac : 0xffb3c6, 12, 8), x, top + 0.085, z));
+  }
+  // 薯片碗
+  const bowl = new Mesh(new SphereGeometry(0.12, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat(C.pinkDeep));
+  g.add(at(bowl, 0, top + 0.12, 0.42));
+  for (let i = 0; i < 7; i++) {
+    const chip = ball(0.03, 0xffd27a, 8, 6);
+    chip.scale.set(1, 0.4, 1);
+    g.add(at(chip, Math.cos(i * 2.4) * 0.05, top + 0.115 + (i % 3) * 0.012, 0.42 + Math.sin(i * 2.4) * 0.05));
+  }
+  // 甜甜圈塔
+  for (let i = 0; i < 3; i++) {
+    const d = new Mesh(new TorusGeometry(0.05, 0.025, 8, 20), mat([0xffb3c6, 0xd6c2ff, 0xffe39a][i]));
+    d.rotation.x = -Math.PI / 2;
+    g.add(at(d, 0, top + 0.025 + i * 0.05, 0.64));
+  }
+  g.position.set(INNER + 0.06 + dep / 2, 0.02, SNACK_Z);
+  return g;
+}
+
+// "生日快乐"横幅：一张贴图画出绳子、四面旗子和字，挂在左墙上（一次绘制）
+function banner() {
+  const W = 1.7, H = 0.5;
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 300;
+  const g = c.getContext('2d');
+  const sx = c.width / W;
+  g.scale(sx, sx);
+  g.strokeStyle = '#D9AD7E';
+  g.lineWidth = 0.012;
+  g.beginPath();
+  g.moveTo(0.02, 0.05);
+  g.quadraticCurveTo(W / 2, 0.16, W - 0.02, 0.05);
+  g.stroke();
+  const colors = ['#F6B7C6', '#D6C2FF', '#FFE08A', '#B9EBC8'];
+  [...'生日快乐'].forEach((ch, i) => {
+    const cx = 0.25 + i * 0.4;
+    const t = cx / W;
+    const y = 0.05 + (1 - (2 * t - 1) ** 2) * 0.055;
+    const fw = 0.3, fh = 0.36;
+    g.fillStyle = colors[i];
+    g.beginPath();
+    g.moveTo(cx - fw / 2, y);
+    g.lineTo(cx + fw / 2, y);
+    g.lineTo(cx + fw / 2, y + fh);
+    g.lineTo(cx, y + fh - 0.07);
+    g.lineTo(cx - fw / 2, y + fh);
+    g.closePath();
+    g.fill();
+    // 字用真正的像素大小画（不靠缩放），手机上才不会因为字号太小被画坏
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#C9707F';
+    g.font = `700 ${Math.round(0.19 * sx)}px PartyRound, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(ch, cx * sx, (y + 0.14) * sx);
+    g.restore();
+  });
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  const mesh = new Mesh(new PlaneGeometry(W, H), new MeshBasicMaterial({ map: tex, transparent: true }));
+  mesh.rotation.y = Math.PI / 2;
+  mesh.position.set(INNER + 0.012, 1.38, SNACK_Z);
+  return flag(mesh, 'keep', 'noOcclude');
+}
+
+// 气球拱门：在蛋糕后面，正对镜头，把蛋糕框在中间
+function balloonArch() {
+  const g = new Group();
+  const R = 1.15, HEIGHT = 2.0;
+  const center = new Vector3(-0.78, 0, -0.78);
+  const along = new Vector3(1, 0, -1).normalize();
+  const toward = new Vector3(1, 0, 1).normalize();
+  const colors = [C.pink, C.lilac, C.cream, C.gold, C.pinkDeep, 0xffffff];
+  const sphere = new SphereGeometry(1, 14, 10);
+  const n = 30;
+  for (let row = 0; row < 2; row++) {
+    for (let i = 0; i <= n; i++) {
+      const t = (i + row * 0.5) / n;
+      if (t > 1) continue;
+      const a = Math.PI * t;
+      const r = 0.1 + ((i * 7 + row * 3) % 5) * 0.008;
+      const p = center.clone()
+        .addScaledVector(along, Math.cos(a) * R)
+        .addScaledVector(toward, (row ? -1 : 1) * 0.06);
+      p.y = 0.12 + Math.sin(a) * HEIGHT;
+      const b = new Mesh(sphere, mat(colors[(i + row * 2) % colors.length]));
+      b.scale.set(r, r * 1.1, r);
+      g.add(at(b, p.x, p.y, p.z));
+    }
+  }
+  // 两脚的配重
+  for (const s of [-1, 1]) {
+    const p = center.clone().addScaledVector(along, s * R);
+    g.add(flag(at(box(0.18, 0.12, 0.18, C.gold, 0.04), p.x, 0.06, p.z), 'shade'));
+  }
+  g.traverse((o) => o.isMesh && !o.userData.shade && flag(o, 'noOcclude'));
+  return g;
+}
+
+// 原创黏土小动物宾客（坐在地上，戴派对帽），正面是 +z
+function guest(kind, fur, belly, hat) {
+  const g = new Group();
+  const blob = (r, color, sx, sy, sz, x, y, z) => {
+    const m = ball(r, color, 14, 10);
+    m.scale.set(sx, sy, sz);
+    return at(m, x, y, z);
+  };
+  g.add(flag(blob(1, fur, 0.17, 0.17, 0.15, 0, 0.17, 0), 'shade')); // 身体
+  g.add(blob(1, belly, 0.11, 0.11, 0.05, 0, 0.15, 0.11)); // 肚子
+  for (const s of [-1, 1]) {
+    g.add(blob(0.055, fur, 1, 0.7, 1.3, s * 0.08, 0.04, 0.1)); // 脚
+    g.add(blob(0.05, fur, 1, 1, 1, s * 0.15, 0.2, 0.05)); // 手
+  }
+  g.add(blob(0.15, fur, 1, 0.92, 0.95, 0, 0.42, 0)); // 头
+  for (const s of [-1, 1]) {
+    g.add(blob(0.018, 0x5a4048, 1, 1.2, 1, s * 0.055, 0.44, 0.13)); // 眼睛
+    g.add(blob(0.03, 0xffa7b8, 1, 0.6, 0.4, s * 0.09, 0.4, 0.12)); // 腮红
+  }
+  if (kind === 'chick') {
+    const beak = new Mesh(new ConeGeometry(0.03, 0.06, 10), mat(0xf5a64a));
+    beak.rotation.x = Math.PI / 2;
+    g.add(at(beak, 0, 0.41, 0.16));
+  } else {
+    g.add(blob(0.016, 0xd9768a, 1.3, 1, 1, 0, 0.415, 0.143)); // 鼻子
+  }
+  for (const s of [-1, 1]) {
+    if (kind === 'cat') {
+      const ear = new Mesh(new ConeGeometry(0.05, 0.1, 12), mat(fur));
+      ear.rotation.z = -s * 0.35;
+      g.add(at(ear, s * 0.09, 0.56, 0));
+    } else if (kind === 'rabbit') {
+      const ear = blob(1, fur, 0.035, 0.13, 0.025, s * 0.06, 0.64, -0.01);
+      ear.rotation.z = -s * 0.18;
+      g.add(ear);
+      const inner = blob(1, 0xffc2d1, 0.018, 0.09, 0.01, s * 0.061, 0.64, 0.014); // 耳朵内侧
+      inner.rotation.z = -s * 0.18;
+      g.add(inner);
+    } else if (kind === 'bear') {
+      g.add(blob(0.05, fur, 1, 1, 0.7, s * 0.11, 0.53, -0.01));
+    }
+  }
+  // 派对帽
+  const cone = new Mesh(new ConeGeometry(0.065, 0.16, 16), mat(hat));
+  cone.rotation.z = 0.25;
+  g.add(at(cone, 0.03, kind === 'rabbit' ? 0.6 : 0.61, -0.02));
+  g.add(at(ball(0.025, C.white, 8, 6), 0.01, kind === 'rabbit' ? 0.685 : 0.695, -0.02));
+  g.scale.setScalar(1.45);
+  return g;
+}
+
+function guests() {
+  const g = new Group();
+  const list = [
+    ['rabbit', 0xfff6f0, 0xffe4ea, C.lilac, 108],
+    ['cat', 0xf7cfa2, 0xfff1e0, 0xffb3c6, 152],
+    ['bear', 0xd9a57e, 0xf3d6bd, 0xb9ebc8, -18],
+    ['chick', 0xffe08a, 0xfff3c4, C.pinkDeep, -62],
+  ];
+  const cam = new Vector3(1, 0, 1).normalize();
+  for (const [kind, fur, belly, hat, deg] of list) {
+    const a = (deg * Math.PI) / 180;
+    const p = new Vector3(Math.cos(a) * 1.2, 0.02, Math.sin(a) * 1.2);
+    const m = guest(kind, fur, belly, hat);
+    m.position.copy(p);
+    // 一半朝着蛋糕，一半朝着镜头，脸才看得到
+    const d = p.clone().negate().normalize().multiplyScalar(0.55).addScaledVector(cam, 0.8);
+    m.rotation.y = Math.atan2(d.x, d.z);
+    g.add(m);
+  }
   return g;
 }
 
 export function buildRoom() {
   const root = new Group();
   flag(root, 'unit');
-  root.add(shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat());
+  root.add(
+    shell(), rugEdge(), windowOnRightWall(), stringLights(), buntings(), lamp(), plant(), cushion(), partyHat(),
+    snackTable(), banner(), balloonArch(), guests(),
+  );
   const interactive = { gifts: gifts(), balloons: balloons(), cake: cakeTable() };
   for (const [key, obj] of Object.entries(interactive)) {
     obj.userData.interactive = key;

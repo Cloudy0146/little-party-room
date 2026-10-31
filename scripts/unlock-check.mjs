@@ -8,9 +8,10 @@ import { webkit, devices } from 'playwright';
 import { serveDist } from './serve-dist.mjs';
 
 const OUT = path.resolve(process.argv[2] ?? 'unlock-shots');
+// 测正式网址：设 BASE_URL=https://cloudy0146.github.io/little-party-room/ 就不起本地服务器
 const PORT = 4176;
-const URL = `http://127.0.0.1:${PORT}/`;
-const server = await serveDist(PORT);
+const URL = process.env.BASE_URL ?? `http://127.0.0.1:${PORT}/`;
+const server = process.env.BASE_URL ? null : await serveDist(PORT);
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await webkit.launch();
 let failed = 0;
@@ -51,5 +52,5 @@ await check('1101-0001-london', { time: '2026-11-01T00:00:01+08:00', timezoneId:
 
 console.log(failed ? `\n${failed} 项不通过` : '\n全部通过');
 await browser.close();
-server.close();
+server?.close();
 process.exitCode = failed ? 1 : 0;
